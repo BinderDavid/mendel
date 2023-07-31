@@ -29,8 +29,11 @@ common warnings
 library
     import:           warnings
     exposed-modules:  Test.Mendel.Parser
+                      Test.Mendel.Printer
+                      Test.Mendel.Mutation
     build-depends:    base >= 4.16 && < 4.20,
-                      ghc-lib-parser ==9.6.2.20230523
+                      ghc-lib-parser ==9.6.2.20230523,
+                      syb >= 0.7 && < 0.8
     hs-source-dirs:   src
     default-language: GHC2021
 
@@ -39,6 +42,7 @@ executable mendel
     main-is:          Main.hs
     build-depends:
         base >= 4.16 && < 4.20,
+        ghc-lib-parser ==9.6.2.20230523,
         mendel
     hs-source-dirs:   app
     default-language: GHC2021

@@ -7,24 +7,20 @@ import GHC.Data.FastString qualified as GHC
 import GHC.Types.SrcLoc qualified as GHC
 import GHC.Utils.Outputable qualified as GHC
 import GHC.Hs qualified as GHC
-import GHC.Utils.Ppr qualified as GHC
 import GHC.Data.EnumSet (empty)
 import GHC.Utils.Error qualified as GHC
 
-import System.IO ( stdout )
+import System.Exit (exitFailure)
 
-parseModule :: FilePath -> IO ()
+parseModule :: FilePath -> IO (GHC.Located (GHC.HsModule GHC.GhcPs))
 parseModule fp = do
     file <- readFile fp
     let parseResult = runParserModule file
     case parseResult of
-        GHC.POk _state res -> do
-            putStrLn "Parse succeeded"
-            let resSDoc = GHC.ppr res
-            GHC.printSDoc GHC.defaultSDocContext (GHC.PageMode True) stdout resSDoc
-            pure ()
+        GHC.POk _state res -> pure res
         GHC.PFailed _state -> do
             putStrLn "Parse failed"
+            exitFailure
 
 
 runParserModule :: String -> GHC.ParseResult (GHC.Located (GHC.HsModule GHC.GhcPs))
