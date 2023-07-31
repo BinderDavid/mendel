@@ -20,7 +20,7 @@ copyright:          David Binder, 2023
 category:           Testing
 build-type:         Simple
 extra-doc-files:    CHANGELOG.md
-                    Readme.md
+                    README.md
 tested-with:        GHC == 9.2.7 || ==9.4.5 || ==9.6.2
 
 common warnings
