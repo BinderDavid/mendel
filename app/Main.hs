@@ -1,8 +1,15 @@
 module Main where
 
-import qualified MyLib (someFunc)
+import System.Environment (getArgs)
+import System.Exit ( exitFailure, exitSuccess ) 
+import Test.Mendel.Parser (parseModule)
 
 main :: IO ()
 main = do
-  putStrLn "Hello, Haskell!"
-  MyLib.someFunc
+  args <- getArgs
+  case args of
+    [fp] -> do
+      parseModule fp
+      exitSuccess
+    _ -> exitFailure
+
