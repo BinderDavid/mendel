@@ -4,20 +4,24 @@ import System.Exit ( exitFailure, exitSuccess )
 import Test.Mendel.Parser (parseModule)
 import Test.Mendel.Printer (printOutputable)
 import Test.Mendel.Mutation (mutate)
-import Test.Mendel.MutationOperator
 import GHC.Types.SrcLoc qualified as GHC
 
-import Options
-import Options.Applicative
+import Options ( Options(..), optionsParser )
+import Options.Applicative ( execParser )
+import Data.Version (showVersion)
+
+import Paths_mendel (version)
 
 main :: IO ()
 main = do
-  opts <- execParser optionsParser'
+  opts <- execParser optionsParser
   dispatch opts
 
+printVersion :: IO ()
+printVersion = putStrLn ("Version: " <> showVersion version)
 
 dispatch :: Options -> IO ()
-dispatch (MutateFile fp) = do
+dispatch (MutateFile mo fp) = do
   mmod <- parseModule fp
   case mmod of
     Just (GHC.L _ hmod) -> do
@@ -25,7 +29,7 @@ dispatch (MutateFile fp) = do
       putStrLn "BEFORE"
       putStrLn "-------------------------------------------------------"
       printOutputable hmod
-      let mutant = mutate ReverseString hmod
+      let mutant = mutate mo hmod
       putStrLn "\n-------------------------------------------------------"
       putStrLn "AFTER"
       putStrLn "-------------------------------------------------------"
@@ -33,3 +37,4 @@ dispatch (MutateFile fp) = do
       putStrLn ""
       exitSuccess
     Nothing -> exitFailure
+dispatch Version = printVersion

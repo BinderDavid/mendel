@@ -1,13 +1,18 @@
-module Options where
+module Options ( Options(..), optionsParser) where
 
 import Options.Applicative
+import Test.Mendel.MutationOperator
 
-data Options =
-    MutateFile FilePath
-    deriving (Eq, Show)
+data Options
+  = MutateFile MuOp FilePath
+  | Version
+  deriving (Eq, Show)
 
-optionsParser :: Parser Options
-optionsParser = MutateFile <$> argument str (metavar "FILE")
+mutateFileParser :: Parser Options
+mutateFileParser = MutateFile ReverseString <$> argument str (metavar "FILE")
 
-optionsParser' :: ParserInfo Options
-optionsParser' = info optionsParser fullDesc
+versionParser :: Parser Options
+versionParser = Version <$ switch (long "version" <> help "Display version")
+
+optionsParser :: ParserInfo Options
+optionsParser = info (versionParser <|> mutateFileParser) fullDesc
