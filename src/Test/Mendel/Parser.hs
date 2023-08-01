@@ -1,3 +1,9 @@
+{- |
+Module         : Test.Mendel.Parser
+Description    : Utility functions for parsing modules using the GHC Api.
+
+This module provides utility functions for parsing Haskell modules using the GHC Api.
+-}
 module Test.Mendel.Parser (parseModule) where
 
 import GHC.Parser qualified as GHC
@@ -10,17 +16,14 @@ import GHC.Hs qualified as GHC
 import GHC.Data.EnumSet (empty)
 import GHC.Utils.Error qualified as GHC
 
-import System.Exit (exitFailure)
-
-parseModule :: FilePath -> IO (GHC.Located (GHC.HsModule GHC.GhcPs))
+-- | Parse the module located at the given filepath.
+parseModule :: FilePath -> IO (Maybe (GHC.Located (GHC.HsModule GHC.GhcPs)))
 parseModule fp = do
     file <- readFile fp
     let parseResult = runParserModule file
     case parseResult of
-        GHC.POk _state res -> pure res
-        GHC.PFailed _state -> do
-            putStrLn "Parse failed"
-            exitFailure
+        GHC.POk _state res -> pure (Just res)
+        GHC.PFailed _state -> pure Nothing
 
 
 runParserModule :: String -> GHC.ParseResult (GHC.Located (GHC.HsModule GHC.GhcPs))

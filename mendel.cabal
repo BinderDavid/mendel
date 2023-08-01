@@ -10,7 +10,7 @@ name:               mendel
 version:            0.1.0.0
 synopsis:           Mutation Operators for Haskell Sourcecode
 description:        Use Mutation Operators to generate Mutants of Haskell Sourcecode.
-                    The library works with GHC's representation of abstract syntax trees and generates mutants of Haskell modules. These mutants can then be used for mutation testing, fault injection, for benchmarking fault localization techniques etc.
+                    The library works with GHC's representation of abstract syntax trees and generates mutants of Haskell modules. These mutants can then be used for mutation testing, fault injection, benchmarking fault localization and repair techniques etc.
 homepage:           https://github.com/BinderDavid/mendel
 license:            BSD-3-Clause
 license-file:       LICENSE
@@ -31,6 +31,7 @@ library
     exposed-modules:  Test.Mendel.Parser
                       Test.Mendel.Printer
                       Test.Mendel.Mutation
+                      Test.Mendel.MutationOperator
     build-depends:    base >= 4.16 && < 4.20,
                       ghc-lib-parser ==9.6.2.20230523,
                       syb >= 0.7 && < 0.8
