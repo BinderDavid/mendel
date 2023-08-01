@@ -41,9 +41,11 @@ library
 executable mendel
     import:           warnings
     main-is:          Main.hs
+    other-modules:    Options
     build-depends:
         base >= 4.16 && < 4.20,
         ghc-lib-parser ==9.6.2.20230523,
+        optparse-applicative >= 0.18 && <0.19,
         mendel
     hs-source-dirs:   app
     default-language: GHC2021
