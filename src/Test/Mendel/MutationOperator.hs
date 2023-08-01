@@ -9,5 +9,7 @@ module Test.Mendel.MutationOperator (MuOp(..)) where
 
 -- | A mutation operator which describes a semantic change that should be applied to
 -- a Haskell module.
-data MuOp = ReverseString
+data MuOp
+  = ReverseString
+  | ReverseClausesInPatternMatch
   deriving (Show, Eq)

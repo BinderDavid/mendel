@@ -9,7 +9,7 @@ data Options
   deriving (Eq, Show)
 
 mutateFileParser :: Parser Options
-mutateFileParser = MutateFile ReverseString <$> argument str (metavar "FILE")
+mutateFileParser = MutateFile ReverseClausesInPatternMatch <$> argument str (metavar "FILE")
 
 versionParser :: Parser Options
 versionParser = Version <$ switch (long "version" <> help "Display version")
