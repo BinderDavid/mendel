@@ -1,3 +1,4 @@
+test/temp/*
 dist
 dist-*
 cabal-dev

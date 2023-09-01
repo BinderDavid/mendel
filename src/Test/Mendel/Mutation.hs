@@ -11,11 +11,12 @@ import Language.Haskell.Syntax.Lit qualified as Hs
 import GHC.Types.SourceText
 import GHC.Types.SrcLoc qualified as GHC
 import GHC.Types.Basic qualified as GHC
+import GHC.Data.FastString qualified as GHC
 
 import Data.Generics.Schemes (everywhere)
 import Data.Generics.Aliases (mkT)
+import Data.ByteString qualified as BS
 import Data.Typeable
-import Data.String
 import Test.Mendel.MutationOperator ( MuOp(..) )
 
 -------------------------------------------------------------------------------
@@ -23,7 +24,7 @@ import Test.Mendel.MutationOperator ( MuOp(..) )
 -------------------------------------------------------------------------------
 
 reverseStringLiteral :: Hs.HsLit GHC.GhcPs -> Hs.HsLit GHC.GhcPs
-reverseStringLiteral (Hs.HsString _ fs) =  Hs.HsString NoSourceText (fromString  (reverse (show fs)))
+reverseStringLiteral (Hs.HsString _ fs) =  Hs.HsString NoSourceText (GHC.mkFastStringByteString (BS.reverse (GHC.bytesFS fs)))
 reverseStringLiteral x = x
 
 greverseStringLiteral :: forall a. Typeable a => a -> a
