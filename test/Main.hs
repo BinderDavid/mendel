@@ -18,15 +18,15 @@ tests = testGroup "Tests" [reverseStringTest]
 
 -- | Where we find the expected result
 goldenDir :: FilePath
-goldenDir = "test" </> "golden"
+goldenDir = "." </> "test" </> "golden"
 
 -- | Where we put the generated output
 tempDir :: FilePath
-tempDir = "test" </> "temp"
+tempDir = "." </> "test" </> "temp"
 
 -- | Where we find the candidate that we want to mutate
 candidateDir :: FilePath
-candidateDir = "test" </> "candidate"
+candidateDir = "." </> "test" </> "candidate"
 
 reverseStringTest :: TestTree
 reverseStringTest = goldenVsFile name (goldenDir </> name <.> "hs")  (tempDir </> name <.> "hs") go
