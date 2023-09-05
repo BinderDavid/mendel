@@ -1,5 +1,6 @@
-module Options ( Options(..), optionsParser) where
+module Options ( Options(..), parseOptions) where
 
+import Data.Foldable (fold)
 import Options.Applicative
 import Test.Mendel.MutationOperator
 
@@ -12,7 +13,15 @@ mutateFileParser :: Parser Options
 mutateFileParser = MutateFile ReverseClausesInPatternMatch <$> argument str (metavar "FILE")
 
 versionParser :: Parser Options
-versionParser = Version <$ switch (long "version" <> help "Display version")
+versionParser = Version <$ flag' () (long "version" <> help "Display version")
 
 optionsParser :: ParserInfo Options
-optionsParser = info (versionParser <|> mutateFileParser) fullDesc
+optionsParser = info (helper <*> (versionParser <|> mutateFileParser)) mods
+  where
+    mods = fold [ fullDesc
+                , progDesc "Mendel is a tool for programmatically injecting faults into Haskell programs"
+                , header "Mendel - mutant generation for Haskell"
+                ]
+
+parseOptions :: IO Options
+parseOptions = customExecParser (prefs showHelpOnError) optionsParser

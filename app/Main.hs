@@ -6,15 +6,14 @@ import Test.Mendel.Printer (printOutputable)
 import Test.Mendel.Mutation (mutate)
 import GHC.Types.SrcLoc qualified as GHC
 
-import Options ( Options(..), optionsParser )
-import Options.Applicative ( execParser )
+import Options ( Options(..), parseOptions )
 import Data.Version (showVersion)
 
 import Paths_mendel (version)
 
 main :: IO ()
 main = do
-  opts <- execParser optionsParser
+  opts <- parseOptions
   dispatch opts
 
 printVersion :: IO ()
