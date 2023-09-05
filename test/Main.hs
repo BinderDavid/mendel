@@ -17,7 +17,8 @@ main :: IO ()
 main = defaultMain tests
 
 tests :: TestTree
-tests = testGroup "Tests" [mkGoldenTest "ReverseString" ReverseString]
+tests = testGroup "Tests" [ mkGoldenTest "ReverseString" ReverseString
+                          , mkGoldenTest "ReverseClausesInPatternMatch" ReverseClausesInPatternMatch]
 
 -------------------------------------------------------------------------------
 -- Directories
