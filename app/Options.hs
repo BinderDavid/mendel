@@ -9,8 +9,17 @@ data Options
   | Version
   deriving (Eq, Show)
 
+muOpParser :: ReadM MuOp
+muOpParser = str >>= \s -> case s of
+  "ReverseString" -> pure ReverseString
+  "ReverseClausesInPatternMatch" -> pure ReverseClausesInPatternMatch
+  _ -> readerError "Accepted mutation operators are: ReverseString, ReverseClausesInPatternMatch"
+
+muOpParser' :: Parser MuOp
+muOpParser' = argument muOpParser (metavar "MUOP")
+
 mutateFileParser :: Parser Options
-mutateFileParser = MutateFile ReverseClausesInPatternMatch <$> argument str (metavar "FILE")
+mutateFileParser = MutateFile <$> muOpParser' <*>  argument str (metavar "FILE")
 
 versionParser :: Parser Options
 versionParser = Version <$ flag' () (long "version" <> help "Display version")
