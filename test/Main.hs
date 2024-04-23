@@ -25,7 +25,7 @@ tests = testGroup "Tests" [ mkGoldenTest "ReverseString" ReverseString
 -------------------------------------------------------------------------------
 
 baseDir :: FilePath
-baseDir = "test"
+baseDir = "./test"
 
 -- | Where we find the expected result
 goldenDir :: FilePath
