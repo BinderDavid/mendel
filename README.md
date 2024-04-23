@@ -1,7 +1,7 @@
 # Mendel
 [![Haskell-CI](https://github.com/BinderDavid/mendel/actions/workflows/haskell-ci.yml/badge.svg)](https://github.com/BinderDavid/mendel/actions/workflows/haskell-ci.yml)
 
-Mendel is a library for introducing faults into Haskell sourcecode, which is sometimes called mutant generation.
+Mendel is a library for introducing faults into Haskell sourcecode, which is also called mutant generation.
 Its implementation is based on two central libraries:
 
 - `ghc-lib-parser` for parsing Haskell source code and for the AST representation of Haskell modules and expressions.
