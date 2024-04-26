@@ -13,7 +13,8 @@ muOpParser :: ReadM MuOp
 muOpParser = str >>= \s -> case s of
   "ReverseString" -> pure ReverseString
   "ReverseClausesInPatternMatch" -> pure ReverseClausesInPatternMatch
-  _ -> readerError "Accepted mutation operators are: ReverseString, ReverseClausesInPatternMatch"
+  "SwapPlusMinus" -> pure SwapPlusMinus
+  _ -> readerError "Accepted mutation operators are: ReverseString, ReverseClausesInPatternMatch, SwapPlusMinus"
 
 muOpParser' :: Parser MuOp
 muOpParser' = argument muOpParser (metavar "MUOP")

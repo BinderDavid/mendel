@@ -8,10 +8,13 @@ module Test.Mendel.Mutation (mutate) where
 
 import GHC.Hs qualified as GHC
 import Language.Haskell.Syntax.Lit qualified as Hs
+import Language.Haskell.Syntax.Expr qualified as Hs
 import GHC.Types.SourceText
 import GHC.Types.SrcLoc qualified as GHC
 import GHC.Types.Basic qualified as GHC
 import GHC.Data.FastString qualified as GHC
+import GHC.Types.Name.Reader qualified as GHC
+import GHC.Types.Name.Occurrence qualified as GHC
 
 import Data.Generics.Schemes (everywhere)
 import Data.Generics.Aliases (mkT)
@@ -41,6 +44,22 @@ greverseClauses :: forall a. Typeable a => a -> a
 greverseClauses = mkT reverseClauses
 
 -------------------------------------------------------------------------------
+-- Mutation on + and -
+-------------------------------------------------------------------------------
+
+swapPlusMinusOperator :: Hs.HsExpr GHC.GhcPs -> Hs.HsExpr GHC.GhcPs
+swapPlusMinusOperator (Hs.HsVar x (GHC.L l (GHC.Unqual v))) = Hs.HsVar x (GHC.L l (GHC.Unqual (handleOccName v)))
+swapPlusMinusOperator x = x
+
+gswapPlusMinusOperator :: forall a. Typeable a => a -> a
+gswapPlusMinusOperator = mkT swapPlusMinusOperator
+
+handleOccName :: GHC.OccName -> GHC.OccName
+handleOccName x = if x == (GHC.mkVarOcc "+") then (GHC.mkVarOcc "-")
+                  else if x == (GHC.mkVarOcc "-") then (GHC.mkVarOcc "+")
+                  else x
+
+-------------------------------------------------------------------------------
 -- Combined
 -------------------------------------------------------------------------------
 
@@ -48,3 +67,4 @@ greverseClauses = mkT reverseClauses
 mutate :: MuOp -> GHC.HsModule GHC.GhcPs -> GHC.HsModule GHC.GhcPs
 mutate ReverseString                = everywhere greverseStringLiteral
 mutate ReverseClausesInPatternMatch = everywhere greverseClauses
+mutate SwapPlusMinus                = everywhere gswapPlusMinusOperator
