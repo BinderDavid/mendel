@@ -24,8 +24,10 @@ extra-doc-files:    CHANGELOG.md
 tested-with:        GHC == 9.2.7 || ==9.4.5 || ==9.6.2
 extra-source-files: test/golden/ReverseString.hs
                     test/golden/ReverseClausesInPatternMatch.hs
+                    test/golden/SwapPlusMinus.hs
                     test/candidate/ReverseString.hs
                     test/candidate/ReverseClausesInPatternMatch.hs
+                    test/candidate/SwapPlusMinus.hs
                     test/temp/.gitkeep
 
 source-repository head
