@@ -18,7 +18,8 @@ main = defaultMain tests
 
 tests :: TestTree
 tests = testGroup "Tests" [ mkGoldenTest "ReverseString" ReverseString
-                          , mkGoldenTest "ReverseClausesInPatternMatch" ReverseClausesInPatternMatch]
+                          , mkGoldenTest "ReverseClausesInPatternMatch" ReverseClausesInPatternMatch
+                          , mkGoldenTest "SwapPlusMinus" SwapPlusMinus]
 
 -------------------------------------------------------------------------------
 -- Directories
