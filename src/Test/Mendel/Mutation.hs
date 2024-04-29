@@ -48,16 +48,16 @@ greverseClauses = mkT reverseClauses
 -------------------------------------------------------------------------------
 
 swapPlusMinusOperator :: Hs.HsExpr GHC.GhcPs -> Hs.HsExpr GHC.GhcPs
-swapPlusMinusOperator (Hs.HsVar x (GHC.L l (GHC.Unqual v))) = Hs.HsVar x (GHC.L l (GHC.Unqual (handleOccName v)))
+swapPlusMinusOperator (Hs.HsVar _ (GHC.L l (GHC.Unqual v))) = Hs.HsVar GHC.NoExtField (GHC.L l (GHC.Unqual (handleOccName v)))
 swapPlusMinusOperator x = x
 
 gswapPlusMinusOperator :: forall a. Typeable a => a -> a
 gswapPlusMinusOperator = mkT swapPlusMinusOperator
 
 handleOccName :: GHC.OccName -> GHC.OccName
-handleOccName x = if x == (GHC.mkVarOcc "+") then (GHC.mkVarOcc "-")
-                  else if x == (GHC.mkVarOcc "-") then (GHC.mkVarOcc "+")
-                  else x
+handleOccName x | x == GHC.mkVarOcc "+" = GHC.mkVarOcc "-"
+                | x == GHC.mkVarOcc "-" = GHC.mkVarOcc "+"
+                | otherwise = x
 
 -------------------------------------------------------------------------------
 -- Combined
