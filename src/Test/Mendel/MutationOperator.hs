@@ -12,4 +12,5 @@ module Test.Mendel.MutationOperator (MuOp(..)) where
 data MuOp
   = ReverseString
   | ReverseClausesInPatternMatch
+  | SwapPlusMinus
   deriving (Show, Eq)
