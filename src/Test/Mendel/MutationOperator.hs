@@ -13,4 +13,5 @@ data MuOp
   = ReverseString
   | ReverseClausesInPatternMatch
   | SwapPlusMinus
+  | SwapIfElse
   deriving (Show, Eq)

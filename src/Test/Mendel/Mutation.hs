@@ -9,7 +9,7 @@ module Test.Mendel.Mutation (mutate) where
 import GHC.Hs qualified as GHC
 import Language.Haskell.Syntax.Lit qualified as Hs
 import Language.Haskell.Syntax.Expr qualified as Hs
-import GHC.Types.SourceText
+import GHC.Types.SourceText 
 import GHC.Types.SrcLoc qualified as GHC
 import GHC.Types.Basic qualified as GHC
 import GHC.Data.FastString qualified as GHC
@@ -60,6 +60,17 @@ handleOccName x | x == GHC.mkVarOcc "+" = GHC.mkVarOcc "-"
                 | otherwise = x
 
 -------------------------------------------------------------------------------
+-- Mutation on if
+-------------------------------------------------------------------------------
+
+swapIfElse :: Hs.HsExpr GHC.GhcPs -> Hs.HsExpr GHC.GhcPs
+swapIfElse (Hs.HsIf _ i t e) = Hs.HsIf GHC.noAnn i e t
+swapIfElse x = x
+
+gswapIfElse :: forall a. Typeable a => a -> a
+gswapIfElse = mkT swapIfElse
+
+-------------------------------------------------------------------------------
 -- Combined
 -------------------------------------------------------------------------------
 
@@ -68,3 +79,4 @@ mutate :: MuOp -> GHC.HsModule GHC.GhcPs -> GHC.HsModule GHC.GhcPs
 mutate ReverseString                = everywhere greverseStringLiteral
 mutate ReverseClausesInPatternMatch = everywhere greverseClauses
 mutate SwapPlusMinus                = everywhere gswapPlusMinusOperator
+mutate SwapIfElse                   = everywhere gswapIfElse
