@@ -131,3 +131,10 @@ runParser opts str parser
       parseState = GHC.initParserState opts buffer location
 ```
 
+# Developing
+
+In order to format the source code files you have to install [fourmolu](https://github.com/fourmolu/fourmolu).
+You can then format the files via:
+```console
+> fourmolu --mode inplace $(git ls-files 'src/**.hs')
+```
