@@ -6,15 +6,15 @@ This module provides utility functions for parsing Haskell modules using the GHC
 -}
 module Test.Mendel.Parser (parseModule) where
 
+import GHC.Data.EnumSet (empty)
+import GHC.Data.FastString qualified as GHC
+import GHC.Data.StringBuffer qualified as GHC
+import GHC.Hs qualified as GHC
 import GHC.Parser qualified as GHC
 import GHC.Parser.Lexer qualified as GHC
-import GHC.Data.StringBuffer qualified as GHC
-import GHC.Data.FastString qualified as GHC
 import GHC.Types.SrcLoc qualified as GHC
-import GHC.Utils.Outputable qualified as GHC
-import GHC.Hs qualified as GHC
-import GHC.Data.EnumSet (empty)
 import GHC.Utils.Error qualified as GHC
+import GHC.Utils.Outputable qualified as GHC
 
 -- | Parse the module located at the given filepath.
 parseModule :: FilePath -> IO (Maybe (GHC.Located (GHC.HsModule GHC.GhcPs)))
@@ -25,10 +25,8 @@ parseModule fp = do
         GHC.POk _state res -> pure (Just res)
         GHC.PFailed _state -> pure Nothing
 
-
 runParserModule :: String -> GHC.ParseResult (GHC.Located (GHC.HsModule GHC.GhcPs))
 runParserModule str = runParser parserOpts str GHC.parseModule
-
 
 parserOpts :: GHC.ParserOpts
 parserOpts = GHC.mkParserOpts empty diagOpts [] False False False False
