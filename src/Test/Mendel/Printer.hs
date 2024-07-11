@@ -8,21 +8,19 @@ module Test.Mendel.Printer (printOutputable, printOutputableToFile) where
 
 import GHC.Utils.Outputable qualified as GHC
 import GHC.Utils.Ppr qualified as GHC
-
-import System.IO ( stdout, withFile, IOMode(..))
-
+import System.IO (IOMode (..), stdout, withFile)
 
 mendelSDocContext :: GHC.SDocContext
 mendelSDocContext = GHC.defaultSDocContext
 
 -- | Prettyprint the given argument on stdout using sensible defaults.
-printOutputable :: GHC.Outputable p => p -> IO ()
+printOutputable :: (GHC.Outputable p) => p -> IO ()
 printOutputable p = do
     let resSDoc = GHC.ppr p
     GHC.printSDoc mendelSDocContext (GHC.PageMode True) stdout resSDoc
 
-printOutputableToFile :: GHC.Outputable p => p -> FilePath -> IO ()
+printOutputableToFile :: (GHC.Outputable p) => p -> FilePath -> IO ()
 printOutputableToFile p fp = do
     let resSDoc = GHC.ppr p
     withFile fp WriteMode $ \handle ->
-      GHC.printSDoc mendelSDocContext (GHC.PageMode True) handle resSDoc
+        GHC.printSDoc mendelSDocContext (GHC.PageMode True) handle resSDoc

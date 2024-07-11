@@ -2,12 +2,12 @@ module Main (main) where
 
 import GHC.Types.SrcLoc qualified as GHC
 import System.FilePath
-import Test.Tasty
-import Test.Tasty.Golden
-import Test.Mendel.Parser
 import Test.Mendel.Mutation
 import Test.Mendel.MutationOperator
+import Test.Mendel.Parser
 import Test.Mendel.Printer (printOutputableToFile)
+import Test.Tasty
+import Test.Tasty.Golden
 
 -------------------------------------------------------------------------------
 -- Testsuite driver
@@ -17,10 +17,14 @@ main :: IO ()
 main = defaultMain tests
 
 tests :: TestTree
-tests = testGroup "Tests" [ mkGoldenTest "ReverseString" ReverseString
-                          , mkGoldenTest "ReverseClausesInPatternMatch" ReverseClausesInPatternMatch
-                          , mkGoldenTest "SwapPlusMinus" SwapPlusMinus
-                          , mkGoldenTest "SwapIfElse" SwapIfElse]
+tests =
+    testGroup
+        "Tests"
+        [ mkGoldenTest "ReverseString" ReverseString
+        , mkGoldenTest "ReverseClausesInPatternMatch" ReverseClausesInPatternMatch
+        , mkGoldenTest "SwapPlusMinus" SwapPlusMinus
+        , mkGoldenTest "SwapIfElse" SwapIfElse
+        ]
 
 -------------------------------------------------------------------------------
 -- Directories
@@ -46,7 +50,7 @@ candidateDir = baseDir </> "candidate"
 -------------------------------------------------------------------------------
 
 mkGoldenTest :: String -> MuOp -> TestTree
-mkGoldenTest name muop = goldenVsFile name (goldenDir </> name <.> "hs")  (tempDir </> name <.> "hs") go
+mkGoldenTest name muop = goldenVsFile name (goldenDir </> name <.> "hs") (tempDir </> name <.> "hs") go
   where
     go :: IO ()
     go = do
@@ -56,4 +60,3 @@ mkGoldenTest name muop = goldenVsFile name (goldenDir </> name <.> "hs")  (tempD
                 let mutated = mutate muop hmod
                 printOutputableToFile mutated (tempDir </> name <.> "hs")
             Nothing -> pure ()
-
