@@ -45,6 +45,8 @@ library
                       Test.Mendel.Printer
                       Test.Mendel.Mutation
                       Test.Mendel.MutationOperator
+                      Test.Mendel.MutationVariant
+                      Test.Mendel.Config
     build-depends:    base >= 4.16 && < 4.20,
                       ghc-lib-parser ==9.6.2.20230523,
                       syb >= 0.7 && < 0.8,
