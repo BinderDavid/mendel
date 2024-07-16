@@ -3,14 +3,15 @@ module Options (Options (..), parseOptions) where
 import Data.Foldable (fold)
 import Options.Applicative
 import Test.Mendel.MutationOperator
+import Test.Mendel.MutationVariant
 
 data Options
-    = MutateFile MuOp FilePath
+    = MutateFile MuVariant FilePath
     | Version
     deriving (Eq, Show)
 
-muOpParser :: ReadM MuOp
-muOpParser =
+muVariantParser :: ReadM MuVariant
+muVariantParser =
     str >>= \s -> case s of
         "ReverseString" -> pure ReverseString
         "ReverseClausesInPatternMatch" -> pure ReverseClausesInPatternMatch
@@ -20,11 +21,11 @@ muOpParser =
             readerError
                 "Accepted mutation operators are: ReverseString, ReverseClausesInPatternMatch, SwapPlusMinus, SwapIfElse"
 
-muOpParser' :: Parser MuOp
-muOpParser' = argument muOpParser (metavar "MUOP")
+muVariantParser' :: Parser MuVariant
+muVariantParser' = argument muVariantParser (metavar "MUOP")
 
 mutateFileParser :: Parser Options
-mutateFileParser = MutateFile <$> muOpParser' <*> argument str (metavar "FILE")
+mutateFileParser = MutateFile <$> muVariantParser' <*> argument str (metavar "FILE")
 
 versionParser :: Parser Options
 versionParser = Version <$ flag' () (long "version" <> help "Display version")

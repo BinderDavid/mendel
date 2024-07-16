@@ -19,5 +19,6 @@ data MuVariant
   | ReverseString
   | ReverseClausesInPatternMatch
   | SwapPlusMinus
+  | SwapIfElse
 
   deriving (Show, Eq)

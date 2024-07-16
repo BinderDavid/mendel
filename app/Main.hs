@@ -5,7 +5,7 @@ import GHC.Types.SrcLoc qualified as GHC
 import Options (Options (..), parseOptions)
 import Paths_mendel (version)
 import System.Exit (exitFailure, exitSuccess)
-import Test.Mendel.Mutation (mutate)
+import Test.Mendel.Mutation (mutate')
 import Test.Mendel.Parser (parseModule)
 import Test.Mendel.Printer (printOutputable)
 
@@ -26,7 +26,7 @@ dispatch (MutateFile mo fp) = do
             putStrLn "BEFORE"
             putStrLn "-------------------------------------------------------"
             printOutputable hmod
-            let mutant = mutate mo hmod
+            let mutant = mutate' mo hmod
             putStrLn "\n-------------------------------------------------------"
             putStrLn "AFTER"
             putStrLn "-------------------------------------------------------"
