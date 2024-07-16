@@ -82,7 +82,7 @@ mkMpMuOp (L (x,y)) = G.mkMp (x ~~> y)
 -- mkMpMuOp (G (x,y)) = G.mkMp (x ~~> y) 
 
 -- | Show a specified mutation
-showM :: (Outputable a, Outputable a1) => (a, a1) -> String
+showM :: (Outputable  a, Outputable a1) => (a, a1) -> String
 showM (s, t) = "{\n" ++ showPprUnsafe s ++ "\n} ==> {\n" ++ showPprUnsafe t ++ "\n}"
 
 -- | MuOp instance for Show
