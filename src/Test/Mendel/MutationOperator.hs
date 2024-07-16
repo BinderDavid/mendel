@@ -8,6 +8,7 @@ module Test.Mendel.MutationOperator (MuOp
           , mkMpMuOp
           , same
           , Module_
+          , Name_
           , Exp_
           , Decl_
           , Literal_
@@ -52,16 +53,16 @@ data MuOp = N  (Name_, Name_)
 
 -- How do I get the Annotated (a SrcSpanInfo) on apply's signature?
 -- | getSpan retrieve the span as a tuple
-getSpan :: MuOp -> (Int, Int, Int, Int)
-getSpan m = (startLine, startCol, endLine, endCol)
-  where (endLine, endCol) = srcSpanEnd lspan
-        (startLine, startCol) = srcSpanStart lspan
-        getSpan' (N  (a,_)) = ann a
-        getSpan' (E  (a,_)) = ann a
-        getSpan' (D  (a,_)) = ann a
-        getSpan' (L  (a,_)) = ann a
-        -- getSpan' (G  (a,_)) = ann a
-        lspan = srcInfoSpan $ getSpan' m
+-- getSpan :: MuOp -> (Int, Int, Int, Int)
+-- getSpan m = (startLine, startCol, endLine, endCol)
+--   where (endLine, endCol) = srcSpanEnd lspan
+--         (startLine, startCol) = srcSpanStart lspan
+--         getSpan' (N  (a,_)) = ann a
+--         getSpan' (E  (a,_)) = ann a
+--         getSpan' (D  (a,_)) = ann a
+--         getSpan' (L  (a,_)) = ann a
+--         -- getSpan' (G  (a,_)) = ann a
+--         lspan = srcInfoSpan $ getSpan' m
 
 -- | The function `same` applies on a `MuOP` determining if transformation is
 -- between same values.
@@ -81,7 +82,7 @@ mkMpMuOp (L (x,y)) = G.mkMp (x ~~> y)
 -- mkMpMuOp (G (x,y)) = G.mkMp (x ~~> y) 
 
 -- | Show a specified mutation
-showM :: (Ppr a, Ppr a1) => (a, a1) -> String
+showM :: (Outputable a, Outputable a1) => (a, a1) -> String
 showM (s, t) = "{\n" ++ showPprUnsafe s ++ "\n} ==> {\n" ++ showPprUnsafe t ++ "\n}"
 
 -- | MuOp instance for Show
