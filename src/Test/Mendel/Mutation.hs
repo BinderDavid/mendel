@@ -7,6 +7,17 @@ Description    : Apply mutation operators to Haskell modules
 
 This module provides the functionality to traverse Haskell modules and apply mutation operators.
 -}
+
+{-# LANGUAGE  TupleSections, RankNTypes #-}
+
+module Test.Mendel.Mutation (programMutants, 
+                             selectLitOps,
+                             --selectBLitOps,
+                             selectIfElseBoolNegOps,
+                             --selectGuardedBoolNegOps,
+                             --selectFnMatches
+                             ) where
+
 module Test.Mendel.Mutation (
     -- programMutants,
     selectLitOps,
@@ -28,10 +39,9 @@ import Data.List (nub, permutations, subsequences, (\\))
 import Data.Maybe (isJust)
 import Data.Typeable
 import GHC.Data.FastString qualified as GHC
-import GHC.Hs
-import GHC.Types.Basic qualified as GHC
-import GHC.Types.Name.Occurrence qualified as GHC
-import GHC.Types.Name.Reader qualified as GHC
+import GHC.Hs qualified as GHC
+import Language.Haskell.Syntax.Lit
+import Language.Haskell.Syntax.Expr
 import GHC.Types.SourceText
 import GHC.Types.SrcLoc qualified as GHC
 import Language.Haskell.Syntax.Expr
