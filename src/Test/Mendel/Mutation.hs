@@ -15,7 +15,8 @@ module Test.Mendel.Mutation (programMutants,
                              --selectBLitOps,
                              selectIfElseBoolNegOps,
                              --selectGuardedBoolNegOps,
-                             --selectFnMatches
+                             --selectFnMatches,
+                             mutate'
                              ) where
 
 module Test.Mendel.Mutation (
