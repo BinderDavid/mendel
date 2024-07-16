@@ -12,7 +12,8 @@ module Test.Mendel.Mutation (programMutants,
                              --selectBLitOps,
                              selectIfElseBoolNegOps,
                              --selectGuardedBoolNegOps,
-                             --selectFnMatches
+                             --selectFnMatches,
+                             mutate'
                              ) where
 
 import Data.ByteString qualified as BS
@@ -341,8 +342,8 @@ gswapIfElse = mkT swapIfElse
 -------------------------------------------------------------------------------
 
 -- | Apply the given mutation operator to the Haskell module
-mutate :: MuVariant -> GHC.HsModule GHC.GhcPs -> GHC.HsModule GHC.GhcPs
-mutate ReverseString = everywhere greverseStringLiteral
-mutate ReverseClausesInPatternMatch = everywhere greverseClauses
-mutate SwapPlusMinus = everywhere gswapPlusMinusOperator
-mutate SwapIfElse = everywhere gswapIfElse
+mutate' :: MuVariant -> Module_ -> Module_
+mutate' ReverseString                = everywhere greverseStringLiteral
+mutate' ReverseClausesInPatternMatch = everywhere greverseClauses
+mutate' SwapPlusMinus                = everywhere gswapPlusMinusOperator
+mutate' SwapIfElse                   = everywhere gswapIfElse

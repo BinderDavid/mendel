@@ -3,6 +3,7 @@ module Main (main) where
 import GHC.Types.SrcLoc qualified as GHC
 import System.FilePath
 import Test.Mendel.Mutation
+import Test.Mendel.MutationOperator
 import Test.Mendel.MutationVariant
 import Test.Mendel.Parser
 import Test.Mendel.Printer (printOutputableToFile)
@@ -57,6 +58,6 @@ mkGoldenTest name muop = goldenVsFile name (goldenDir </> name <.> "hs") (tempDi
         mmod <- parseModule (candidateDir </> name <.> "hs")
         case mmod of
             Just (GHC.L _ hmod) -> do
-                let mutated = mutate muop hmod
+                let mutated = mutate' muop hmod
                 printOutputableToFile mutated (tempDir </> name <.> "hs")
             Nothing -> pure ()
