@@ -2,6 +2,8 @@
 -- | Configuration module
 module Test.Mendel.Config where
 
+import Test.Mendel.MutationVariant
+
 -- | The knob controlling if we want first order mutation.
 data GenerationMode
   = FirstOrderOnly
@@ -109,18 +111,9 @@ defaultConfig = Config {
   , maxNumMutants = 300
   , genMode = FirstOrderOnly }
 
--- | Enumeration of different variants of mutations
-data MuVar = MutatePatternMatch
-           | MutateValues
-           | MutateFunctions
-           | MutateNegateIfElse
-           | MutateNegateGuards
-           | MutateOther String
-  deriving (Eq, Show)
-
 -- | getSample returns the fraction in config corresponding to the enum passed
 -- in
-getSample :: MuVar -> Config -> Rational
+getSample :: MuVariant -> Config -> Rational
 getSample MutatePatternMatch c = doMutatePatternMatches c
 getSample MutateValues       c = doMutateValues c
 getSample MutateFunctions    c = doMutateFunctions c
@@ -131,7 +124,7 @@ getSample MutateOther{} _c = 1
 -- | similarity between two mutation variants. For ease of use, MutateOther is
 -- treated differently. For MutateOther, if the string is empty, then it is
 -- matched against any other MutateOther.
-similar :: MuVar -> MuVar -> Bool
+similar :: MuVariant -> MuVariant -> Bool
 similar (MutateOther a) (MutateOther b) = if | null a  -> True
                                              | null b -> True
                                              | otherwise -> a == b

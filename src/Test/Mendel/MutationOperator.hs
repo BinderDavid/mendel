@@ -13,7 +13,7 @@ module Test.Mendel.MutationOperator (MuOp
           , Decl_
           , Literal_
          -- , GuardedRhs_
-         --, getSpan
+         , getSpan
           ) where
 
 import qualified Data.Generics as G
@@ -35,6 +35,9 @@ type Decl_ = HsDecl GhcPs
 type Literal_ = HsLit GhcPs
 -- type GuardedRhs_ = GRHS GhcPs (LocatedA GhcPs) 
 
+instance Eq Module_ where
+  (==) x y = toConstr x == toConstr y
+
 instance Eq Exp_ where
   (==) x y = toConstr x == toConstr y
 
@@ -53,8 +56,8 @@ data MuOp = N  (Name_, Name_)
 
 -- How do I get the Annotated (a SrcSpanInfo) on apply's signature?
 -- | getSpan retrieve the span as a tuple
--- getSpan :: MuOp -> (Int, Int, Int, Int)
--- getSpan m = (startLine, startCol, endLine, endCol)
+getSpan :: MuOp -> (Int, Int, Int, Int)
+getSpan m = undefined --(startLine, startCol, endLine, endCol)
 --   where (endLine, endCol) = srcSpanEnd lspan
 --         (startLine, startCol) = srcSpanStart lspan
 --         getSpan' (N  (a,_)) = ann a
