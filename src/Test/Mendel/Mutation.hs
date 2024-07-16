@@ -7,7 +7,13 @@ This module provides the functionality to traverse Haskell modules and apply mut
 
 {-# LANGUAGE  TupleSections, RankNTypes #-}
 
-module Test.Mendel.Mutation (programMutants, selectLitOps, selectBLitOps, selectIfElseBoolNegOps, selectGuardedBoolNegOps, selectFnMatches) where
+module Test.Mendel.Mutation (programMutants, 
+                             selectLitOps,
+                             --selectBLitOps,
+                             selectIfElseBoolNegOps,
+                             --selectGuardedBoolNegOps,
+                             --selectFnMatches
+                             ) where
 
 import Data.ByteString qualified as BS
 import Data.Generics.Aliases (mkT)
@@ -16,7 +22,7 @@ import Data.Typeable
 import GHC.Data.FastString qualified as GHC
 import GHC.Hs qualified as GHC
 import Language.Haskell.Syntax.Lit
-import Language.Haskell.Syntax.Expr qualified as Hs
+import Language.Haskell.Syntax.Expr
 import GHC.Types.SourceText
 import GHC.Types.SrcLoc qualified as GHC
 import GHC.Types.Basic qualified as GHC
@@ -33,7 +39,7 @@ import Data.List(nub, (\\), permutations, subsequences)
 
 import Test.Mendel.MutationOperator
     ( (==>*),
-      -- getSpan,
+      getSpan,
       mkMpMuOp,
       same,
       Decl_,
@@ -47,13 +53,12 @@ import Test.Mendel.MutationOperator
 import Test.Mendel.Config
     ( Config(muOp),
       FnOp(_type, _fns),
-      FnType(FnSymbol, FnIdent),
-      MuVar(..) )
+      FnType(FnSymbol, FnIdent))
 
 import Data.Generics (Data, GenericM, gmapMo, Typeable, mkMp, listify)
 import Control.Monad (MonadPlus, mplus)
 import Data.Maybe(isJust)
-import Test.Mendel.MutationVariant (MuVariant)
+import Test.Mendel.MutationVariant
 import GHC.Hs (HsLit(HsIntPrim))
 
 type Span = (Int, Int, Int, Int)
@@ -85,7 +90,7 @@ choose xs n = filter (\x -> length x == n) $ subsequences xs
 programMutants ::
      Config                   -- ^ Configuration
   -> Module_                  -- ^ Module to mutate
-  -> [(MuVar, Span, Module_)] -- ^ Returns mutated modules
+  -> [(MuVariant, Span, Module_)] -- ^ Returns mutated modules
 programMutants config ast =  nub $ mutatesN (applicableOps config ast) ast fstOrder
   where fstOrder = 1 -- first order
 
@@ -93,10 +98,10 @@ programMutants config ast =  nub $ mutatesN (applicableOps config ast) ast fstOr
 -- and generation of mutants happens here.
 -- The third argument specifies whether it's first order or higher order
 mutatesN ::
-     [(MuVar,MuOp)]     -- ^ Applicable Operators
+     [(MuVariant,MuOp)]     -- ^ Applicable Operators
   -> Module_            -- ^ Module to mutate
   -> Int                -- ^ Order of mutation (usually 1 - first order)
-  -> [(MuVar, Span, Module_)] -- ^ Returns the mutated module
+  -> [(MuVariant, Span, Module_)] -- ^ Returns the mutated module
 mutatesN os ast = mutatesN' os (MutateOther [], (0,0,0,0), ast)
   where mutatesN' ops ms 1 = concat [mutate op ms | op <- ops ]
         mutatesN' ops ms c = concat [mutatesN' ops m 1 | m <- mutatesN' ops ms $ pred c]
@@ -105,7 +110,7 @@ mutatesN os ast = mutatesN' os (MutateOther [], (0,0,0,0), ast)
 -- op once (op might be applied at different places).
 -- E.g.: if the operator is (op = "<" ==> ">") and there are two instances of
 -- "<" in the AST, then it will return two AST with each replaced.
-mutate :: (MuVar, MuOp) -> (MuVar, Span, Module_) -> [(MuVar, Span, Module_)]
+mutate :: (MuVariant, MuOp) -> (MuVariant, Span, Module_) -> [(MuVariant, Span, Module_)]
 mutate (v, op) (_v, _s, m) = map (v, getSpan op, ) $ once (mkMpMuOp op) m \\ [m]
 
 
@@ -113,15 +118,14 @@ mutate (v, op) (_v, _s, m) = map (v, getSpan op, ) $ once (mkMpMuOp op) m \\ [m]
 applicableOps ::
      Config                   -- ^ Configuration
   -> Module_                  -- ^ Module to mutate
-  -> [(MuVar,MuOp)]           -- ^ Returns mutation operators
+  -> [(MuVariant,MuOp)]           -- ^ Returns mutation operators
 applicableOps config ast = relevantOps ast opsList
   where opsList = concatMap spread [
             (MutatePatternMatch, selectFnMatches ast),
             (MutateValues, selectLiteralOps ast),
             (MutateFunctions, selectFunctionOps (muOp config) ast),
-            (MutateNegateIfElse, selectIfElseBoolNegOps ast),
-            (MutateNegateGuards, selectGuardedBoolNegOps ast)]
-
+            (MutateNegateIfElse, selectIfElseBoolNegOps ast)]
+            --(MutateNegateGuards, selectGuardedBoolNegOps ast)
 
 -- | For valops, we specify how any given literal value might
 -- change. So we take a predicate specifying how to recognize the literal
@@ -141,28 +145,28 @@ selectLiteralOps m = selectLitOps m ++ selectBLitOps m
 -- | Look for literal values in AST, and return applicable MuOp transforms.
 -- Unfortunately booleans are not handled here.
 selectLitOps :: Module_ -> [MuOp]
-selectLitOps = selectValOps isLit convert
-  where isLit :: Literal_ -> Bool
-        isLit (HsInt _ _) = True
-        isLit (HsIntPrim _ _) = True
-        isLit (HsChar _ _) = True
-        isLit (HsCharPrim _ _) = True
-        isLit (HsFloatPrim _ _) = True
-        isLit (HsDoublePrim _ _) = True
-        isLit (HsString _ _) = True
-        isLit (HsStringPrim _ _) = True
-        isLit (HsWordPrim _ _) = True
-        convert (HsInt l i) = map (apX (HsInt l)) $ nub [i + 1, i - 1, 0, 1]
-        convert (HsIntPrim l i) = map (apX (HsIntPrim l)) $ nub [i + 1, i - 1, 0, 1]
-        convert (HsChar l c) = map (apX (HsChar l)) [pred c, succ c]
-        convert (HsCharPrim l c) = map (apX (HsCharPrim l)) [pred c, succ c]
-        convert (HsFloatPrim l f) = map (apX (HsFloatPrim l)) $ nub [f + 1.0, f - 1.0, 0.0, 1.0]
-        convert (HsDoublePrim l f) = map (apX (HsDoublePrim l)) $ nub [f + 1.0, f - 1.0, 0.0, 1.0]
-        convert (HsString l _) = map (apX (HsString l)) $ nub [""]
-        convert (HsStringPrim l _) = map (apX (HsStringPrim l)) $ nub [""]
-        convert (HsWordPrim l i) = map (apX (HsWordPrim l)) $ nub [i + 1, i - 1, 0, 1]
-        apX :: (t1 -> [a] -> t) -> t1 -> t
-        apX fn i = fn i []
+selectLitOps = undefined --selectValOps isLit convert
+  -- where isLit :: Literal_ -> Bool
+  --       isLit HsInt{} = True
+  --       isLit HsIntPrim{} = True
+  --       isLit HsChar{} = True
+  --       isLit HsCharPrim{} = True
+  --       isLit HsFloatPrim{} = True
+  --       isLit HsDoublePrim{} = True
+  --       isLit HsString{} = True
+  --       isLit HsStringPrim{} = True
+  --       isLit HsWordPrim{} = True
+  --       convert (HsInt l i) = map (apX (HsInt l)) $ nub [i + 1, i - 1, 0, 1]
+  --       convert (HsIntPrim l i) = map (apX (HsIntPrim l)) $ nub [i + 1, i - 1, 0, 1]
+  --       convert (HsChar l c) = map (apX (HsChar l)) [pred c, succ c]
+  --       convert (HsCharPrim l c) = map (apX (HsCharPrim l)) [pred c, succ c]
+  --       convert (HsFloatPrim l f) = map (apX (HsFloatPrim l)) $ nub [f + 1.0, f - 1.0, 0.0, 1.0]
+  --       convert (HsDoublePrim l f) = map (apX (HsDoublePrim l)) $ nub [f + 1.0, f - 1.0, 0.0, 1.0]
+  --       convert (HsString l _) = map (apX (HsString l)) $ nub [""]
+  --       convert (HsStringPrim l _) = map (apX (HsStringPrim l)) $ nub [""]
+  --       convert (HsWordPrim l i) = map (apX (HsWordPrim l)) $ nub [i + 1, i - 1, 0, 1]
+  --       apX :: (t1 -> [a] -> t) -> t1 -> t
+  --       apX fn i = fn i []
 
 -- | Convert Boolean Literals
 --
@@ -173,14 +177,12 @@ selectLitOps = selectValOps isLit convert
 -- > (False, True)
 
 selectBLitOps :: Module_ -> [MuOp]
-selectBLitOps = nverselectValOps isLit convert
-  where isLit :: Name_ -> Bool
-        isLit (Ident _l "True") = True
-        isLit (Ident _l "False") = True
-        isLit _ = False
-        convert (Ident l "True") = [Ident l "False"]
-        convert (Ident l "False") = [Ident l "True"]
-        convert _ = []
+selectBLitOps = undefined --nverselectValOps isLit convert
+--   where isLit :: Name_ -> Bool
+--         isLit n = occNameString n == "True" || occNameString n == "False" 
+--         convert (Ident l "True") = [Ident l "False"]
+--         convert (Ident l "False") = [Ident l "True"]
+--         convert _ = []
 
 -- | Negating boolean in if/else statements
 --
@@ -193,9 +195,9 @@ selectBLitOps = nverselectValOps isLit convert
 selectIfElseBoolNegOps :: Module_ -> [MuOp]
 selectIfElseBoolNegOps = selectValOps isIf convert
   where isIf :: Exp_ -> Bool
-        isIf If{} = True
+        isIf HsIf{} = True
         isIf _    = False
-        convert (If l e1 e2 e3) = [If l e1 e3 e2]
+        convert (HsIf l e1 e2 e3) = [HsIf l e1 e3 e2]
         convert _ = []
 
 -- | Negating boolean in Guards
@@ -208,18 +210,18 @@ selectIfElseBoolNegOps = selectValOps isIf convert
 --
 -- > myFn x | not (x == 1) = True
 -- > myFn   | otherwise = False
-selectGuardedBoolNegOps :: Module_ -> [MuOp]
-selectGuardedBoolNegOps = selectValOps isGuardedRhs convert
-  where isGuardedRhs :: GuardedRhs_ -> Bool
-        isGuardedRhs GuardedRhs{} = True
-        convert (GuardedRhs l stmts expr) = [GuardedRhs l s expr | s <- once (mkMp boolNegate) stmts]
-        boolNegate _e@(Qualifier _l (Var _lv (UnQual _lu (Ident _li "otherwise")))) = [] -- VERIFY
-        boolNegate (Qualifier l expr) = [Qualifier l (App l_ (Var l_ (UnQual l_ (Ident l_ "not"))) expr)]
-        boolNegate _x = [] -- VERIFY
+-- selectGuardedBoolNegOps :: Module_ -> [MuOp]
+-- selectGuardedBoolNegOps = selectValOps isGuardedRhs convert
+--   where isGuardedRhs :: GuardedRhs_ -> Bool
+--         isGuardedRhs GuardedRhs{} = True
+--         convert (GuardedRhs l stmts expr) = [GuardedRhs l s expr | s <- once (mkMp boolNegate) stmts]
+--         boolNegate _e@(Qualifier _l (Var _lv (UnQual _lu (Ident _li "otherwise")))) = [] -- VERIFY
+--         boolNegate (Qualifier l expr) = [Qualifier l (App l_ (Var l_ (UnQual l_ (Ident l_ "not"))) expr)]
+--         boolNegate _x = [] -- VERIFY
 
 -- | dummy 
-l_ :: SrcSpanInfo
-l_ = SrcSpanInfo (SrcSpan "" 0 0 0 0) []
+-- l_ :: SrcSpanInfo
+-- l_ = SrcSpanInfo (SrcSpan "" 0 0 0 0) []
 
 
 -- | Generate all operators for permuting and removal of pattern guards from
@@ -238,32 +240,32 @@ l_ = SrcSpanInfo (SrcSpan "" 0 0 0 0) []
 -- > myFn (x:xs) = False
 
 selectFnMatches :: Module_ -> [MuOp]
-selectFnMatches = selectValOps isFunct convert
-  where isFunct :: Decl_ -> Bool
-        isFunct FunBind{} = True
-        isFunct _    = False
-        convert (FunBind l ms) = map (FunBind l) $ filter (/= ms) (permutations ms ++ removeOneElem ms)
-        convert _ = []
+selectFnMatches = undefined --selectValOps isFunct convert
+--   where isFunct :: Decl_ -> Bool
+--         isFunct FunBind{} = True
+--         isFunct _    = False
+--         convert (FunBind l ms) = map (FunBind l) $ filter (/= ms) (permutations ms ++ removeOneElem ms)
+--         convert _ = []
 
 -- | Generate all operators for permuting symbols like binary operators
 -- Since we are looking for symbols, we are reasonably sure that it is not
 -- locally bound to a variable.
 selectSymbolFnOps :: Module_ -> [String] -> [MuOp]
-selectSymbolFnOps m s = selectValOps isBin convert m
-  where isBin :: Name_ -> Bool
-        isBin (Symbol _l n) | n `elem` s = True
-        isBin _ = False
-        convert (Symbol l n) = map (Symbol l) $ filter (/= n) s
-        convert _ = []
+selectSymbolFnOps m s = undefined -- selectValOps isBin convert m
+--   where isBin :: Name_ -> Bool
+--         isBin (Symbol _l n) | n `elem` s = True
+--         isBin _ = False
+--         convert (Symbol l n) = map (Symbol l) $ filter (/= n) s
+--         convert _ = []
 
 -- | Generate all operators for permuting commonly used functions (with
 -- identifiers).
-selectIdentFnOps :: Module_ -> [String] ->  [MuOp]
+selectIdentFnOps :: Module_ -> [String] -> [MuOp]
 selectIdentFnOps m s = selectValOps isCommonFn convert m
   where isCommonFn :: Exp_ -> Bool
-        isCommonFn (Var _lv (UnQual _lu (Ident _l n))) | n `elem` s = True
+        isCommonFn (HsVar _ (GHC.L _ (GHC.Unqual n))) | GHC.occNameString n `elem` s = True
         isCommonFn _ = False
-        convert (Var lv_ (UnQual lu_ (Ident li_ n))) = map  (Var lv_ . UnQual lu_ . Ident li_) $ filter (/= n) s
+        convert (HsVar _ (GHC.L l (GHC.Unqual n))) = undefined --map  (HsVar lv_ . UnQual lu_ . Ident li_) $ filter (/= GHC.occNameString n) s
         convert _ = []
 
 -- | Generate all operators depending on whether it is a symbol or not.
@@ -288,8 +290,8 @@ removeOneElem l = choose l (length l - 1)
 -- Mutation on Literals
 -------------------------------------------------------------------------------
 
-reverseStringLiteral :: Hs.HsLit GHC.GhcPs -> Hs.HsLit GHC.GhcPs
-reverseStringLiteral (Hs.HsString _ fs) = Hs.HsString NoSourceText (GHC.mkFastStringByteString (BS.reverse (GHC.bytesFS fs)))
+reverseStringLiteral :: HsLit GHC.GhcPs -> HsLit GHC.GhcPs
+reverseStringLiteral (HsString _ fs) = HsString NoSourceText (GHC.mkFastStringByteString (BS.reverse (GHC.bytesFS fs)))
 reverseStringLiteral x = x
 
 greverseStringLiteral :: forall a. (Typeable a) => a -> a
@@ -310,8 +312,8 @@ greverseClauses = mkT reverseClauses
 -- Mutation on + and -
 -------------------------------------------------------------------------------
 
-swapPlusMinusOperator :: Hs.HsExpr GHC.GhcPs -> Hs.HsExpr GHC.GhcPs
-swapPlusMinusOperator (Hs.HsVar _ (GHC.L l (GHC.Unqual v))) = Hs.HsVar GHC.NoExtField (GHC.L l (GHC.Unqual (handleOccName v)))
+swapPlusMinusOperator :: HsExpr GHC.GhcPs -> HsExpr GHC.GhcPs
+swapPlusMinusOperator (HsVar _ (GHC.L l (GHC.Unqual v))) = HsVar GHC.NoExtField (GHC.L l (GHC.Unqual (handleOccName v)))
 swapPlusMinusOperator x = x
 
 gswapPlusMinusOperator :: forall a. (Typeable a) => a -> a
@@ -327,8 +329,8 @@ handleOccName x
 -- Mutation on if
 -------------------------------------------------------------------------------
 
-swapIfElse :: Hs.HsExpr GHC.GhcPs -> Hs.HsExpr GHC.GhcPs
-swapIfElse (Hs.HsIf _ i t e) = Hs.HsIf GHC.noAnn i e t
+swapIfElse :: HsExpr GHC.GhcPs -> HsExpr GHC.GhcPs
+swapIfElse (HsIf _ i t e) = HsIf GHC.noAnn i e t
 swapIfElse x = x
 
 gswapIfElse :: forall a. (Typeable a) => a -> a

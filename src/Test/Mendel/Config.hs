@@ -109,9 +109,8 @@ defaultConfig =
         , maxNumMutants = 300
         }
 
-{- | getSample returns the fraction in config corresponding to the enum passed
-in
--}
+-- | getSample returns the fraction in config corresponding to the enum passed
+-- in
 getSample :: MuVariant -> Config -> Rational
 getSample MutatePatternMatch c = doMutatePatternMatches c
 getSample MutateValues c = doMutateValues c
@@ -120,14 +119,11 @@ getSample MutateNegateIfElse c = doNegateIfElse c
 getSample MutateNegateGuards c = doNegateGuards c
 getSample MutateOther{} _c = 1
 
-{- | similarity between two mutation variants. For ease of use, MutateOther is
-treated differently. For MutateOther, if the string is empty, then it is
-matched against any other MutateOther.
--}
+-- | similarity between two mutation variants. For ease of use, MutateOther is
+-- treated differently. For MutateOther, if the string is empty, then it is
+-- matched against any other MutateOther.
 similar :: MuVariant -> MuVariant -> Bool
-similar (MutateOther a) (MutateOther b) =
-    if
-        | null a -> True
-        | null b -> True
-        | otherwise -> a == b
+similar (MutateOther a) (MutateOther b) = if | null a  -> True
+                                             | null b -> True
+                                             | otherwise -> a == b
 similar x y = x == y
