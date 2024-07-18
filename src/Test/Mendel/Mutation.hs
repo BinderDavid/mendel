@@ -40,7 +40,7 @@ import Data.List (nub, permutations, subsequences, (\\))
 import Data.Maybe (isJust)
 import Data.Typeable
 import GHC.Data.FastString qualified as GHC
-import GHC.Hs qualified as GHC
+import GHC.Hs
 import Language.Haskell.Syntax.Lit
 import Language.Haskell.Syntax.Expr
 import GHC.Types.SourceText
