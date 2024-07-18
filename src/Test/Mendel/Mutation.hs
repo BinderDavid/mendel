@@ -21,7 +21,7 @@ import Data.Generics.Aliases (mkT)
 import Data.Generics.Schemes (everywhere)
 import Data.Typeable
 import GHC.Data.FastString qualified as GHC
-import GHC.Hs qualified as GHC
+import GHC.Hs
 import Language.Haskell.Syntax.Lit
 import Language.Haskell.Syntax.Expr
 import GHC.Types.SourceText
@@ -147,27 +147,32 @@ selectLiteralOps m = selectLitOps m ++ selectBLitOps m
 -- Unfortunately booleans are not handled here.
 selectLitOps :: Module_ -> [MuOp]
 selectLitOps = undefined --selectValOps isLit convert
-  -- where isLit :: Literal_ -> Bool
-  --       isLit HsInt{} = True
-  --       isLit HsIntPrim{} = True
-  --       isLit HsChar{} = True
-  --       isLit HsCharPrim{} = True
-  --       isLit HsFloatPrim{} = True
-  --       isLit HsDoublePrim{} = True
-  --       isLit HsString{} = True
-  --       isLit HsStringPrim{} = True
-  --       isLit HsWordPrim{} = True
-  --       convert (HsInt l i) = map (apX (HsInt l)) $ nub [i + 1, i - 1, 0, 1]
-  --       convert (HsIntPrim l i) = map (apX (HsIntPrim l)) $ nub [i + 1, i - 1, 0, 1]
-  --       convert (HsChar l c) = map (apX (HsChar l)) [pred c, succ c]
-  --       convert (HsCharPrim l c) = map (apX (HsCharPrim l)) [pred c, succ c]
-  --       convert (HsFloatPrim l f) = map (apX (HsFloatPrim l)) $ nub [f + 1.0, f - 1.0, 0.0, 1.0]
-  --       convert (HsDoublePrim l f) = map (apX (HsDoublePrim l)) $ nub [f + 1.0, f - 1.0, 0.0, 1.0]
-  --       convert (HsString l _) = map (apX (HsString l)) $ nub [""]
-  --       convert (HsStringPrim l _) = map (apX (HsStringPrim l)) $ nub [""]
-  --       convert (HsWordPrim l i) = map (apX (HsWordPrim l)) $ nub [i + 1, i - 1, 0, 1]
-  --       apX :: (t1 -> [a] -> t) -> t1 -> t
-  --       apX fn i = fn i []
+  where isLit :: Literal_ -> Bool
+        isLit HsInt{} = True
+        isLit HsIntPrim{} = True
+        isLit HsChar{} = True
+        isLit HsCharPrim{} = True
+        isLit HsFloatPrim{} = True
+        isLit HsDoublePrim{} = True
+        isLit HsString{} = True
+        isLit HsStringPrim{} = True
+        isLit HsWordPrim{} = True
+        isLit HsInteger{} = True
+        isLit HsRat{} = True
+        isLit HsInt64Prim{} = True
+        isLit HsWord64Prim{} = True
+        -- convert (HsInt l i) = map (apX (HsInt l i)) $ nub [i + 1, i - 1, 0, 1]
+        -- convert (HsIntPrim l i) = map (apX (HsIntPrim l i)) $ nub [i + 1, i - 1, 0, 1]
+        -- convert (HsChar l c) = map (apX (HsChar l)) [pred c, succ c]
+        -- convert (HsCharPrim l c) = map (apX (HsCharPrim l)) [pred c, succ c]
+        -- convert (HsFloatPrim l f) = map (apX (HsFloatPrim l)) $ nub [f + 1.0, f - 1.0, 0.0, 1.0]
+        -- convert (HsDoublePrim l f) = map (apX (HsDoublePrim l)) $ nub [f + 1.0, f - 1.0, 0.0, 1.0]
+        -- convert (HsString l _) = map (apX (HsString l)) $ nub [""]
+        -- convert (HsStringPrim l _) = map (apX (HsStringPrim l)) $ nub [""]
+        -- convert (HsWordPrim l i) = map (apX (HsWordPrim l)) $ nub [i + 1, i - 1, 0, 1]
+        apX :: (t1 -> [a] -> t) -> t1 -> t
+        apX fn i = fn i []
+        
 
 -- | Convert Boolean Literals
 --
@@ -178,12 +183,12 @@ selectLitOps = undefined --selectValOps isLit convert
 -- > (False, True)
 
 selectBLitOps :: Module_ -> [MuOp]
-selectBLitOps = undefined --nverselectValOps isLit convert
---   where isLit :: Name_ -> Bool
---         isLit n = occNameString n == "True" || occNameString n == "False" 
---         convert (Ident l "True") = [Ident l "False"]
---         convert (Ident l "False") = [Ident l "True"]
---         convert _ = []
+selectBLitOps = selectValOps isLit convert
+  where isLit :: Name_ -> Bool
+        isLit n = GHC.occNameString n == "True" || GHC.occNameString n == "False" 
+        convert n | GHC.occNameString n == "True" = [GHC.mkVarOcc "False"]
+                  | GHC.occNameString n == "False" = [GHC.mkVarOcc "True"]
+                  | otherwise = error "Filter of Booleans doesn't work" 
 
 -- | Negating boolean in if/else statements
 --
@@ -241,12 +246,13 @@ selectIfElseBoolNegOps = selectValOps isIf convert
 -- > myFn (x:xs) = False
 
 selectFnMatches :: Module_ -> [MuOp]
-selectFnMatches = undefined --selectValOps isFunct convert
---   where isFunct :: Decl_ -> Bool
---         isFunct FunBind{} = True
---         isFunct _    = False
---         convert (FunBind l ms) = map (FunBind l) $ filter (/= ms) (permutations ms ++ removeOneElem ms)
---         convert _ = []
+selectFnMatches = selectValOps isFunct convert
+   where isFunct :: Decl_ -> Bool
+         isFunct (ValD _ (FunBind {})) = True
+         isFunct _    = False
+         convert (ValD x (FunBind ext id mg)) = undefined--map (ValD x (FunBind ext id mg)) $ filter (/= ms) (permutations ms ++ removeOneElem ms)
+         convert _ = []
+
 
 -- | Generate all operators for permuting symbols like binary operators
 -- Since we are looking for symbols, we are reasonably sure that it is not
@@ -291,7 +297,7 @@ removeOneElem l = choose l (length l - 1)
 -- Mutation on Literals
 -------------------------------------------------------------------------------
 
-reverseStringLiteral :: HsLit GHC.GhcPs -> HsLit GHC.GhcPs
+reverseStringLiteral :: HsLit GhcPs -> HsLit GhcPs
 reverseStringLiteral (HsString _ fs) = HsString NoSourceText (GHC.mkFastStringByteString (BS.reverse (GHC.bytesFS fs)))
 reverseStringLiteral x = x
 
@@ -302,9 +308,8 @@ greverseStringLiteral = mkT reverseStringLiteral
 -- Mutation on Pattern Matches
 -------------------------------------------------------------------------------
 
-reverseClauses ::
-    GHC.MatchGroup GHC.GhcPs (GHC.LHsExpr GHC.GhcPs) -> GHC.MatchGroup GHC.GhcPs (GHC.LHsExpr GHC.GhcPs)
-reverseClauses (GHC.MG _ (GHC.L l body)) = GHC.MG GHC.Generated (GHC.L l (reverse body))
+reverseClauses :: MatchGroup GhcPs (LHsExpr GhcPs) -> MatchGroup GhcPs (LHsExpr GhcPs)
+reverseClauses (MG _ (GHC.L l body)) = MG GHC.Generated (GHC.L l (reverse body))
 
 greverseClauses :: forall a. (Typeable a) => a -> a
 greverseClauses = mkT reverseClauses
@@ -313,8 +318,8 @@ greverseClauses = mkT reverseClauses
 -- Mutation on + and -
 -------------------------------------------------------------------------------
 
-swapPlusMinusOperator :: HsExpr GHC.GhcPs -> HsExpr GHC.GhcPs
-swapPlusMinusOperator (HsVar _ (GHC.L l (GHC.Unqual v))) = HsVar GHC.NoExtField (GHC.L l (GHC.Unqual (handleOccName v)))
+swapPlusMinusOperator :: HsExpr GhcPs -> HsExpr GhcPs
+swapPlusMinusOperator (HsVar _ (GHC.L l (GHC.Unqual v))) = HsVar NoExtField (GHC.L l (GHC.Unqual (handleOccName v)))
 swapPlusMinusOperator x = x
 
 gswapPlusMinusOperator :: forall a. (Typeable a) => a -> a
@@ -330,8 +335,8 @@ handleOccName x
 -- Mutation on if
 -------------------------------------------------------------------------------
 
-swapIfElse :: HsExpr GHC.GhcPs -> HsExpr GHC.GhcPs
-swapIfElse (HsIf _ i t e) = HsIf GHC.noAnn i e t
+swapIfElse :: HsExpr GhcPs -> HsExpr GhcPs
+swapIfElse (HsIf _ i t e) = HsIf noAnn i e t
 swapIfElse x = x
 
 gswapIfElse :: forall a. (Typeable a) => a -> a
