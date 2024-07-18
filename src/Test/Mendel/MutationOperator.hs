@@ -26,6 +26,7 @@ import GHC.Parser.Annotation
 import Language.Haskell.TH.Ppr
 import Data.Data (Data(toConstr))
 import GHC.Utils.Outputable
+import Language.Haskell.GhclibParserEx.GHC.Hs.ExtendInstances
 
 
 type Module_ = HsModule GhcPs

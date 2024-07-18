@@ -3,7 +3,7 @@
 module Test.Mendel.Config where
 
 -- | The knob controlling if we want first order mutation.
-data GenerationMode
+data GenerationMode -- entfernen
   = FirstOrderOnly
   | FirstAndHigherOrder
   deriving (Eq, Show)
