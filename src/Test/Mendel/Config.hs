@@ -1,12 +1,7 @@
 {-# LANGUAGE MultiWayIf #-}
 -- | Configuration module
 module Test.Mendel.Config where
-
--- | The knob controlling if we want first order mutation.
-data GenerationMode -- entfernen
-  = FirstOrderOnly
-  | FirstAndHigherOrder
-  deriving (Eq, Show)
+import Test.Mendel.MutationVariant
 
 -- | For function mutations, whether the function is a symbol or an identifier
 -- for example,`head` is an identifier while `==` is a symbol.
@@ -89,10 +84,7 @@ data Config = Config {
 -- > myFn   | otherwise = False
   , doNegateGuards :: Rational
 -- | Maximum number of mutants to generate.
-  , maxNumMutants :: Int
--- | Generation mode, can be traditional (firstOrder) and
--- higher order (higher order is experimental)
-  , genMode :: GenerationMode }
+  , maxNumMutants :: Int }
   deriving Show
 
 -- | The default configuration
@@ -106,21 +98,11 @@ defaultConfig = Config {
   , doMutateFunctions = 1.0
   , doNegateIfElse = 1.0
   , doNegateGuards = 1.0
-  , maxNumMutants = 300
-  , genMode = FirstOrderOnly }
-
--- | Enumeration of different variants of mutations
-data MuVar = MutatePatternMatch
-           | MutateValues
-           | MutateFunctions
-           | MutateNegateIfElse
-           | MutateNegateGuards
-           | MutateOther String
-  deriving (Eq, Show)
+  , maxNumMutants = 300}
 
 -- | getSample returns the fraction in config corresponding to the enum passed
 -- in
-getSample :: MuVar -> Config -> Rational
+getSample :: MuVariant -> Config -> Rational
 getSample MutatePatternMatch c = doMutatePatternMatches c
 getSample MutateValues       c = doMutateValues c
 getSample MutateFunctions    c = doMutateFunctions c
@@ -131,7 +113,7 @@ getSample MutateOther{} _c = 1
 -- | similarity between two mutation variants. For ease of use, MutateOther is
 -- treated differently. For MutateOther, if the string is empty, then it is
 -- matched against any other MutateOther.
-similar :: MuVar -> MuVar -> Bool
+similar :: MuVariant -> MuVariant -> Bool
 similar (MutateOther a) (MutateOther b) = if | null a  -> True
                                              | null b -> True
                                              | otherwise -> a == b

@@ -8,78 +8,66 @@ module Test.Mendel.MutationOperator (MuOp
           , mkMpMuOp
           , same
           , Module_
-          , Name_
           , Exp_
           , Decl_
-          , Literal_
          -- , GuardedRhs_
-         --, getSpan
+         , getSpan
           ) where
 
 import qualified Data.Generics as G
 import Control.Monad (MonadPlus, mzero)
 
-import GHC.Hs --(HsModule, HsExpr, HsDecl, HsLit, GhcPs)
-import GHC.Types.Name.Occurrence (OccName, occNameString)
-import Language.Haskell.Syntax.Expr (GRHS)
-import GHC.Parser.Annotation
-import Language.Haskell.TH.Ppr
-import Data.Data (Data(toConstr))
+import GHC.Hs
+--import Language.Haskell.Syntax.Expr (GRHS)
+--import Data.Data (Data(toConstr))
 import GHC.Utils.Outputable
 import Language.Haskell.GhclibParserEx.GHC.Hs.ExtendInstances
-
+import GHC.Types.SrcLoc
 
 type Module_ = HsModule GhcPs
-type Name_ = OccName
-type Exp_ = HsExpr GhcPs
-type Decl_ = HsDecl GhcPs
-type Literal_ = HsLit GhcPs
+type Exp_ = LHsExpr GhcPs
+type Decl_ = LHsDecl GhcPs
 -- type GuardedRhs_ = GRHS GhcPs (LocatedA GhcPs) 
 
-instance Eq Exp_ where
-  (==) x y = toConstr x == toConstr y
-
-instance Eq Decl_ where
-  (==) x y = toConstr x == toConstr y
-
-
 -- | MuOp constructor used to specify mutation transformation
-data MuOp = N  (Name_, Name_)
-          | E  (Exp_, Exp_)
+data MuOp = E  (Exp_, Exp_)
           | D  (Decl_, Decl_)
-          | L  (Literal_, Literal_)
          -- | G  (GuardedRhs_, GuardedRhs_)
-  deriving Eq
+
+instance Eq MuOp where
+  (==) (E (x1, y1)) (E (x2, y2)) = astEq x1 x2 && astEq y1 y2
+  (==) (D (x1, y1)) (D (x2, y2)) = astEq x1 x2 && astEq y1 y2
+  (==) (D _) (E _) = False
+  (==) (E _) (D _) = False
 
 
 -- How do I get the Annotated (a SrcSpanInfo) on apply's signature?
 -- | getSpan retrieve the span as a tuple
--- getSpan :: MuOp -> (Int, Int, Int, Int)
--- getSpan m = (startLine, startCol, endLine, endCol)
---   where (endLine, endCol) = srcSpanEnd lspan
---         (startLine, startCol) = srcSpanStart lspan
---         getSpan' (N  (a,_)) = ann a
---         getSpan' (E  (a,_)) = ann a
---         getSpan' (D  (a,_)) = ann a
---         getSpan' (L  (a,_)) = ann a
---         -- getSpan' (G  (a,_)) = ann a
---         lspan = srcInfoSpan $ getSpan' m
+getSpan :: MuOp -> (Int, Int, Int, Int)
+getSpan m = (startLine, startCol, endLine, endCol) 
+  where startLine = getInt srcSpanStartLine lspan
+        startCol  = getInt srcSpanStartCol lspan
+        endLine   = getInt srcSpanEndLine lspan
+        endCol    = getInt srcSpanEndCol lspan
+        getInt :: (RealSrcSpan -> Int) -> Maybe RealSrcSpan -> Int
+        getInt f (Just x) = f x 
+        getInt _ Nothing = error "No Source Span"
+        getSpan' (E  (a,_)) = getLocA a
+        getSpan' (D  (a,_)) = getLocA a
+        -- getSpan' (G  (a,_)) = ann a
+        lspan = srcSpanToRealSrcSpan $ getSpan' m
 
 -- | The function `same` applies on a `MuOP` determining if transformation is
 -- between same values.
 same :: MuOp -> Bool
-same (N (x,y)) = x == y
-same (E (x,y)) = x == y
-same (D (x,y)) = x == y
-same (L (x,y)) = x == y
+same (E (x,y)) = astEq x y
+same (D (x,y)) = astEq x y
 -- same (G (x,y)) = x == y
 
 -- | A wrapper over mkMp
 mkMpMuOp :: (MonadPlus m, G.Typeable a) => MuOp -> a -> m a
-mkMpMuOp (N (x,y)) = G.mkMp (x ~~> y) 
 mkMpMuOp (E (x,y)) = G.mkMp (x ~~> y) 
-mkMpMuOp (D (x,y)) = G.mkMp (x ~~> y) 
-mkMpMuOp (L (x,y)) = G.mkMp (x ~~> y) 
+mkMpMuOp (D (x,y)) = G.mkMp (x ~~> y)  
 -- mkMpMuOp (G (x,y)) = G.mkMp (x ~~> y) 
 
 -- | Show a specified mutation
@@ -88,10 +76,8 @@ showM (s, t) = "{\n" ++ showPprUnsafe s ++ "\n} ==> {\n" ++ showPprUnsafe t ++ "
 
 -- | MuOp instance for Show
 instance Show MuOp where
-  show (N m) = showM m
   show (E m) = showM m
   show (D m) = showM m
-  show (L m) = showM m
   -- show (G p) = showM p
 
 -- | Mutation operation representing translation from one fn to another fn.
@@ -111,24 +97,16 @@ xs *==>* ys = concatMap (==>* ys) xs
 -- | The function `~~>` accepts two values, and returns a function
 -- that if given a value equal to first, returns second
 -- we handle x ~~> x separately
-(~~>) :: (MonadPlus m, Eq a) => a -> a -> a -> m a
-x ~~> y = \z -> if z == x then return y else mzero
-
--- | Name instance for Mutable
-instance Mutable Name_ where
-  (==>) = (N .) . (,)
+(~~>) :: (MonadPlus m, G.Data a) => a -> a -> a -> m a
+x ~~> y = \z -> if astEq z x then return y else mzero
 
 -- | Exp instance for Mutable
-instance Mutable Exp_ where
-  (==>) = (E .) . (,)
+-- instance Mutable Exp_ where
+--   (==>) = (E .) . (,)
 
--- | Exp instance for Mutable
-instance Mutable Decl_ where
-  (==>) = (D .) . (,)
-
--- | Literal instance for Mutable
-instance Mutable Literal_ where
-  (==>) = (L .) . (,)
+-- -- | Exp instance for Mutable
+-- instance Mutable Decl_ where
+--   (==>) = (D .) . (,)
 
 -- | GuardedRhs instance for Mutable
 -- instance Mutable GuardedRhs_ where
