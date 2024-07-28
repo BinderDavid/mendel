@@ -20,6 +20,7 @@ import GHC.Types.SrcLoc qualified as GHC
 import Language.Haskell.Syntax.Expr qualified as Hs
 import Language.Haskell.Syntax.Lit qualified as Hs
 import Test.Mendel.MutationOperator (MuOp (..))
+import Test.Mendel.MutationVariant
 
 -------------------------------------------------------------------------------
 -- Mutation on Literals
@@ -76,7 +77,7 @@ gswapIfElse = mkT swapIfElse
 -------------------------------------------------------------------------------
 
 -- | Apply the given mutation operator to the Haskell module
-mutate :: MuOp -> GHC.HsModule GHC.GhcPs -> GHC.HsModule GHC.GhcPs
+mutate :: MuVariant -> GHC.HsModule GHC.GhcPs -> GHC.HsModule GHC.GhcPs
 mutate ReverseString = everywhere greverseStringLiteral
 mutate ReverseClausesInPatternMatch = everywhere greverseClauses
 mutate SwapPlusMinus = everywhere gswapPlusMinusOperator

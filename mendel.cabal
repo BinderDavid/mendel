@@ -45,10 +45,13 @@ library
                       Test.Mendel.Printer
                       Test.Mendel.Mutation
                       Test.Mendel.MutationOperator
+                      Test.Mendel.MutationVariant
+                      Test.Mendel.Config
     build-depends:    base >= 4.16 && < 4.20,
                       ghc-lib-parser ==9.6.2.20230523,
                       syb >= 0.7 && < 0.8,
-                      bytestring >=0.11 && < 0.13
+                      bytestring >=0.11 && < 0.13,
+                      ghc-lib-parser-ex 
     hs-source-dirs:   src
     default-language: GHC2021
 
