@@ -47,7 +47,6 @@ import Test.Mendel.MutationOperator (
     Module_,
     MuOp,
     Mutable,
-    Wrapped (..),
     getSpan,
     mkMpMuOp,
     same,
@@ -117,7 +116,7 @@ E.g.: if the operator is (op = "<" ==> ">") and there are two instances of
 "<" in the AST, then it will return two AST with each replaced.
 -}
 mutate :: (MuVariant, MuOp) -> (MuVariant, Span, Module_) -> [(MuVariant, Span, Module_)]
-mutate (v, op) (_v, _s, m) = map (v,getSpan op,) $ once (mkMpMuOp op) m \\ [m]
+mutate (v, op) (_v, _s, m) = undefined -- map (v,getSpan op,) $ once (mkMpMuOp op) m \\ [m]
 
 {- | Returns all mutation operators
 applicableOps ::
