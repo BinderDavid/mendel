@@ -352,4 +352,3 @@ mutate' ReverseString = everywhere greverseStringLiteral
 mutate' ReverseClausesInPatternMatch = everywhere greverseClauses
 mutate' SwapPlusMinus = everywhere gswapPlusMinusOperator
 mutate' SwapIfElse = everywhere gswapIfElse
-
