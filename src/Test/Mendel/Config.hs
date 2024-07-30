@@ -1,5 +1,4 @@
 {-# LANGUAGE MultiWayIf #-}
-
 -- | Configuration module
 module Test.Mendel.Config where
 
