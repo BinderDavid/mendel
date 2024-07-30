@@ -57,6 +57,6 @@ mkGoldenTest name muop = goldenVsFile name (goldenDir </> name <.> "hs") (tempDi
         mmod <- parseModule (candidateDir </> name <.> "hs")
         case mmod of
             Just (GHC.L _ hmod) -> do
-                let mutated = mutate muop hmod
+                let mutated = mutate' muop hmod
                 printOutputableToFile mutated (tempDir </> name <.> "hs")
             Nothing -> pure ()
