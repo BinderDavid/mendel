@@ -26,7 +26,9 @@ import Data.Generics.Aliases (mkT)
 import Data.Generics.Schemes (everywhere)
 import Data.List (nub, permutations, subsequences, (\\))
 import Data.Maybe (isJust)
+import Data.Ratio
 import Data.Typeable
+import GHC.Core.Utils (getIdFromTrivialExpr_maybe)
 import GHC.Data.FastString qualified as GHC
 import GHC.Hs
 import GHC.Types.Basic qualified as GHC
@@ -36,7 +38,6 @@ import GHC.Types.SourceText
 import GHC.Types.SrcLoc qualified as GHC
 import Language.Haskell.Syntax.Expr
 import Language.Haskell.Syntax.Lit
-import Data.Ratio
 import Test.Mendel.Config (
     Config (muOp),
     FnOp (_fns, _type),
@@ -54,7 +55,6 @@ import Test.Mendel.MutationOperator (
     (==>*),
  )
 import Test.Mendel.MutationVariant
-import GHC.Core.Utils (getIdFromTrivialExpr_maybe)
 
 type Span = (Int, Int, Int, Int)
 
@@ -122,17 +122,24 @@ mutate (v, op) (_v, _s, m) = undefined -- map (v,getSpan op,) $ once (mkMpMuOp o
 
 -- | Returns all mutation operators
 applicableOps ::
-     Config                   -- ^ Configuration
-  -> Module_                  -- ^ Module to mutate
-  -> [(MuVariant,MuOp)]           -- ^ Returns mutation operators
-applicableOps config ast = undefined --relevantOps ast opsList
-  where opsList = concatMap spread [
-            (MutatePatternMatch, selectFnMatches ast),
-            (MutateValues, selectLiteralOps ast),
-            --(MutateFunctions, selectFunctionOps (muOp config) ast),
-            (MutateNegateIfElse, selectIfElseBoolNegOps ast)]
--- (MutateNegateGuards, selectGuardedBoolNegOps ast)
+    -- | Configuration
+    Config ->
+    -- | Module to mutate
+    Module_ ->
+    -- | Returns mutation operators
+    [(MuVariant, MuOp)]
+applicableOps config ast = undefined -- relevantOps ast opsList
+  where
+    opsList =
+        concatMap
+            spread
+            [ (MutatePatternMatch, selectFnMatches ast)
+            , (MutateValues, selectLiteralOps ast)
+            , -- (MutateFunctions, selectFunctionOps (muOp config) ast),
+              (MutateNegateIfElse, selectIfElseBoolNegOps ast)
+            ]
 
+-- (MutateNegateGuards, selectGuardedBoolNegOps ast)
 
 {- | For valops, we specify how any given literal value might
 change. So we take a predicate specifying how to recognize the literal
@@ -174,45 +181,56 @@ selectLitOps = selectValOps isLit convert
     isLit (GHC.L _ (HsLit _ (HsInt64Prim{}))) = True
     isLit (GHC.L _ (HsLit _ (HsWord64Prim{}))) = True
     isLit _ = False
-    convert (WrpExpr (GHC.L l (HsLit p (HsInt x i)))) = map (changeIntegral (WrpExpr (GHC.L l (HsLit p (HsInt x i))))) $ nub [calcIntLit (+) i 1, calcIntLit (-) i 1, mkIntegralLit 0, mkIntegralLit 1]
+    convert (WrpExpr (GHC.L l (HsLit p (HsInt x i)))) =
+        map (changeIntegral (WrpExpr (GHC.L l (HsLit p (HsInt x i))))) $
+            nub [calcIntLit (+) i 1, calcIntLit (-) i 1, mkIntegralLit 0, mkIntegralLit 1]
     convert (WrpExpr (GHC.L l (HsLit p (HsIntPrim x i)))) = map (changeInt (WrpExpr (GHC.L l (HsLit p (HsIntPrim x i))))) $ nub [i + 1, i - 1, 0, 1]
     convert (WrpExpr (GHC.L l (HsLit p (HsChar x c)))) = map (changeChar (WrpExpr (GHC.L l (HsLit p (HsChar x c))))) [pred c, succ c]
     convert (WrpExpr (GHC.L l (HsLit p (HsCharPrim x c)))) = map (changeChar (WrpExpr (GHC.L l (HsLit p (HsCharPrim x c))))) [pred c, succ c]
-    convert (WrpExpr (GHC.L l (HsLit p (HsFloatPrim x f)))) = map (changeFracLit (WrpExpr (GHC.L l (HsLit p (HsFloatPrim x f))))) $ nub [calcFracLit (+) f 1, calcFracLit (-) f 1, mkTHFractionalLit 0, mkTHFractionalLit 1]
-    convert (WrpExpr (GHC.L l (HsLit p (HsDoublePrim x f)))) = map (changeFracLit (WrpExpr (GHC.L l (HsLit p (HsDoublePrim x f))))) $ nub [calcFracLit (+) f 1, calcFracLit (-) f 1, mkTHFractionalLit 0, mkTHFractionalLit 1]
+    convert (WrpExpr (GHC.L l (HsLit p (HsFloatPrim x f)))) =
+        map (changeFracLit (WrpExpr (GHC.L l (HsLit p (HsFloatPrim x f))))) $
+            nub [calcFracLit (+) f 1, calcFracLit (-) f 1, mkTHFractionalLit 0, mkTHFractionalLit 1]
+    convert (WrpExpr (GHC.L l (HsLit p (HsDoublePrim x f)))) =
+        map (changeFracLit (WrpExpr (GHC.L l (HsLit p (HsDoublePrim x f))))) $
+            nub [calcFracLit (+) f 1, calcFracLit (-) f 1, mkTHFractionalLit 0, mkTHFractionalLit 1]
     convert (WrpExpr (GHC.L l (HsLit p (HsString x _)))) = [WrpExpr (GHC.L l (HsLit p (HsString x (GHC.fsLit ""))))] -- was map over the List [""] before
     convert (WrpExpr (GHC.L l (HsLit p (HsStringPrim x _)))) = [WrpExpr (GHC.L l (HsLit p (HsStringPrim x (GHC.bytesFS $ GHC.fsLit ""))))]
     convert (WrpExpr (GHC.L l (HsLit p (HsWordPrim x i)))) = map (changeInt (WrpExpr (GHC.L l (HsLit p (HsWordPrim x i))))) $ nub [i + 1, i - 1, 0, 1]
     convert (WrpExpr (GHC.L l (HsLit p (HsInteger x i t)))) = map (changeInt (WrpExpr (GHC.L l (HsLit p (HsInteger x i t))))) $ nub [i + 1, i - 1, 0, 1]
-    convert (WrpExpr (GHC.L l (HsLit p (HsRat x f t)))) = map (changeFracLit (WrpExpr (GHC.L l (HsLit p (HsRat x f t))))) $ nub [calcFracLit (+) f 1, calcFracLit (-) f 1, mkTHFractionalLit 0, mkTHFractionalLit 1]
+    convert (WrpExpr (GHC.L l (HsLit p (HsRat x f t)))) =
+        map (changeFracLit (WrpExpr (GHC.L l (HsLit p (HsRat x f t))))) $
+            nub [calcFracLit (+) f 1, calcFracLit (-) f 1, mkTHFractionalLit 0, mkTHFractionalLit 1]
     convert (WrpExpr (GHC.L l (HsLit p (HsInt64Prim x i)))) = map (changeInt (WrpExpr (GHC.L l (HsLit p (HsInt64Prim x i))))) $ nub [i + 1, i - 1, 0, 1]
     convert (WrpExpr (GHC.L l (HsLit p (HsWord64Prim x i)))) = map (changeInt (WrpExpr (GHC.L l (HsLit p (HsWord64Prim x i))))) $ nub [i + 1, i - 1, 0, 1]
     convert _ = error "No HsLit"
     calcIntLit :: (Integer -> Integer -> Integer) -> IntegralLit -> Integer -> IntegralLit
     calcIntLit f (IL _ _ 0) i = mkIntegralLit $ f 0 i
-    calcIntLit f (IL _ neg val) i | neg = mkIntegralLit $ f (-val) i  
-                                  | otherwise = mkIntegralLit $ f val i
-    calcFracLit :: (Ratio Integer -> Ratio Integer -> Ratio Integer) -> FractionalLit -> Ratio Integer -> FractionalLit
+    calcIntLit f (IL _ neg val) i
+        | neg = mkIntegralLit $ f (-val) i
+        | otherwise = mkIntegralLit $ f val i
+    calcFracLit ::
+        (Ratio Integer -> Ratio Integer -> Ratio Integer) -> FractionalLit -> Ratio Integer -> FractionalLit
     calcFracLit f x i = mkTHFractionalLit $ f (rationalFromFractionalLit x) i
     changeIntegral :: Exp_ -> IntegralLit -> Exp_
     changeIntegral (WrpExpr (GHC.L l (HsLit p (HsInt x _)))) i = WrpExpr (GHC.L l (HsLit p (HsInt x i)))
-    changeIntegral _ _= error "false type"
-    changeInt :: Exp_ -> Integer -> Exp_ 
+    changeIntegral _ _ = error "false type"
+    changeInt :: Exp_ -> Integer -> Exp_
     changeInt (WrpExpr (GHC.L l (HsLit p (HsIntPrim x _)))) i = WrpExpr (GHC.L l (HsLit p (HsIntPrim x i)))
     changeInt (WrpExpr (GHC.L l (HsLit p (HsWordPrim x _)))) i = WrpExpr (GHC.L l (HsLit p (HsWordPrim x i)))
     changeInt (WrpExpr (GHC.L l (HsLit p (HsInteger x _ t)))) i = WrpExpr (GHC.L l (HsLit p (HsInteger x i t)))
     changeInt (WrpExpr (GHC.L l (HsLit p (HsInt64Prim x _)))) i = WrpExpr (GHC.L l (HsLit p (HsInt64Prim x i)))
     changeInt (WrpExpr (GHC.L l (HsLit p (HsWord64Prim x _)))) i = WrpExpr (GHC.L l (HsLit p (HsWord64Prim x i)))
-    changeInt _ _= error "false type"
+    changeInt _ _ = error "false type"
     changeChar :: Exp_ -> Char -> Exp_
     changeChar (WrpExpr (GHC.L l (HsLit p (HsChar x _)))) c = WrpExpr (GHC.L l (HsLit p (HsChar x c)))
     changeChar (WrpExpr (GHC.L l (HsLit p (HsCharPrim x _)))) c = WrpExpr (GHC.L l (HsLit p (HsCharPrim x c)))
     changeChar _ _ = error "false type"
-    changeFracLit :: Exp_ -> FractionalLit -> Exp_ 
+    changeFracLit :: Exp_ -> FractionalLit -> Exp_
     changeFracLit (WrpExpr (GHC.L l (HsLit p (HsFloatPrim x _)))) i = WrpExpr (GHC.L l (HsLit p (HsFloatPrim x i)))
     changeFracLit (WrpExpr (GHC.L l (HsLit p (HsDoublePrim x _)))) i = WrpExpr (GHC.L l (HsLit p (HsDoublePrim x i)))
     changeFracLit (WrpExpr (GHC.L l (HsLit p (HsRat x _ t)))) i = WrpExpr (GHC.L l (HsLit p (HsRat x i t)))
     changeFracLit _ _ = error "false type"
+
 {- | Convert Boolean Literals
 
 > (True, False)
