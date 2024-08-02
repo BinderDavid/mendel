@@ -141,21 +141,6 @@ applicableOps config ast = undefined -- relevantOps ast opsList
 
 -- (MutateNegateGuards, selectGuardedBoolNegOps ast)
 
-{- | For valops, we specify how any given literal value might
-change. So we take a predicate specifying how to recognize the literal
-value, a list of mappings specifying how the literal can change, and the
-AST, and recurse over the AST looking for literals that match our predicate.
-When we find any, we apply the given list of mappings to them, and produce
-a MuOp mapping between the original value and transformed value. This list
-of MuOp mappings are then returned.
--}
-selectValOps ::
-    (Typeable a, Typeable b, Mutable b) => (a -> Bool) -> (b -> [b]) -> Module_ -> [MuOp]
-selectValOps predicate f m = concat [x ==>* f x | x <- vals]
-  where
-    vals = map wrap $ listify predicate m
-    wrap = undefined
-
 -- | Look for literal values in AST, and return applicable MuOp transforms.
 selectLiteralOps :: Module_ -> [MuOp]
 selectLiteralOps m = selectLitOps m ++ selectBLitOps m
@@ -164,7 +149,7 @@ selectLiteralOps m = selectLitOps m ++ selectBLitOps m
 Unfortunately booleans are not handled here.
 -}
 selectLitOps :: Module_ -> [MuOp]
-selectLitOps = selectValOps isLit convert
+selectLitOps m = concat [x ==>* convert x | x <- WrpExpr <$> listify isLit m]
   where
     isLit :: LHsExpr GhcPs -> Bool
     isLit (GHC.L _ (HsLit _ (HsInt{}))) = True
@@ -194,7 +179,7 @@ selectLitOps = selectValOps isLit convert
         map (changeFracLit (WrpExpr (GHC.L l (HsLit p (HsDoublePrim x f))))) $
             nub [calcFracLit (+) f 1, calcFracLit (-) f 1, mkTHFractionalLit 0, mkTHFractionalLit 1]
     convert (WrpExpr (GHC.L l (HsLit p (HsString x _)))) = [WrpExpr (GHC.L l (HsLit p (HsString x (GHC.fsLit ""))))] -- was map over the List [""] before
-    convert (WrpExpr (GHC.L l (HsLit p (HsStringPrim x _)))) = [WrpExpr (GHC.L l (HsLit p (HsStringPrim x (GHC.bytesFS $ GHC.fsLit ""))))]
+    convert (WrpExpr (GHC.L l (HsLit p (HsStringPrim x _)))) = [WrpExpr (GHC.L l (HsLit p (HsStringPrim x (GHC.bytesFS $ GHC.fsLit ""))))] -- was map over the List [""] before
     convert (WrpExpr (GHC.L l (HsLit p (HsWordPrim x i)))) = map (changeInt (WrpExpr (GHC.L l (HsLit p (HsWordPrim x i))))) $ nub [i + 1, i - 1, 0, 1]
     convert (WrpExpr (GHC.L l (HsLit p (HsInteger x i t)))) = map (changeInt (WrpExpr (GHC.L l (HsLit p (HsInteger x i t))))) $ nub [i + 1, i - 1, 0, 1]
     convert (WrpExpr (GHC.L l (HsLit p (HsRat x f t)))) =
@@ -240,7 +225,7 @@ becomes
 > (False, True)
 -}
 selectBLitOps :: Module_ -> [MuOp]
-selectBLitOps = selectValOps isLit convert
+selectBLitOps m = concat [x ==>* convert x | x <- WrpExpr <$> listify isLit m]
   where
     isLit :: LHsExpr GhcPs -> Bool
     isLit (GHC.L _ (HsVar _ (GHC.L _ (GHC.Unqual n)))) = GHC.occNameString n == "True" || GHC.occNameString n == "False"
@@ -262,7 +247,7 @@ becomes
 > if True then 0 else 1
 -}
 selectIfElseBoolNegOps :: Module_ -> [MuOp]
-selectIfElseBoolNegOps = selectValOps isIf convert
+selectIfElseBoolNegOps m = concat [x ==>* convert x | x <- WrpExpr <$> listify isIf m]
   where
     isIf :: LHsExpr GhcPs -> Bool
     --
@@ -287,13 +272,13 @@ becomes
 > myFn (x:xs) = False
 -}
 selectFnMatches :: Module_ -> [MuOp]
-selectFnMatches = selectValOps isFunct convert
+selectFnMatches m = concat [x ==>* convert x | x <- WrpDecl <$> listify isFunct m]
   where
     isFunct :: LHsDecl GhcPs -> Bool
     isFunct (GHC.L _ (ValD _ (FunBind{}))) = True
     isFunct _ = False
-    convert (WrpDecl (GHC.L l (ValD x (FunBind ext id mg)))) = undefined -- map (ValD x (FunBind ext id mg)) $ filter (/= ms) (permutations ms ++ removeOneElem ms)
-    convert _ = []
+    convert = undefined -- (WrpDecl (GHC.L l (ValD x (FunBind ext id mg)))) = map (WrpDecl (GHC.L l (ValD x (FunBind ext id mg)))) $ filter (not . astEq mg) (permutations mg ++ removeOneElem mg)
+    -- convert _ = []
 
 {- | Generate all operators for permuting symbols like binary operators
 Since we are looking for symbols, we are reasonably sure that it is not
@@ -311,14 +296,13 @@ selectSymbolFnOps m s = undefined -- selectValOps isBin convert m
 identifiers).
 -}
 selectIdentFnOps :: Module_ -> [String] -> [MuOp]
-selectIdentFnOps m s = undefined -- selectValOps isCommonFn convert m
+selectIdentFnOps m s = concat [x ==>* convert x | x <- WrpExpr <$> listify isCommonFn m]
   where
     isCommonFn :: LHsExpr GhcPs -> Bool
     isCommonFn (GHC.L _ (HsVar _ (GHC.L _ (GHC.Unqual n)))) | GHC.occNameString n `elem` s = True
     isCommonFn _ = False
-
---       convert (HsVar _ (GHC.L l (GHC.Unqual n))) = undefined --map  (HsVar lv_ . UnQual lu_ . Ident li_) $ filter (/= GHC.occNameString n) s
---       convert _ = []
+    convert = undefined --(HsVar _ (GHC.L l (GHC.Unqual n))) = map  (HsVar lv_ . UnQual lu_ . Ident li_) $ filter (/= GHC.occNameString n) s
+--    convert _ = []
 
 {- | Generate all operators depending on whether it is a symbol or not.
 selectFunctionOps :: [FnOp] -> Module_ -> [MuOp]
