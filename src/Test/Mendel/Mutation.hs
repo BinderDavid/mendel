@@ -30,12 +30,14 @@ import Data.Ratio
 import Data.Typeable
 import GHC.Core.Utils (getIdFromTrivialExpr_maybe)
 import GHC.Data.FastString qualified as GHC
+import GHC.Driver.Backpack.Syntax (HsUnitDecl (DeclD))
 import GHC.Hs
 import GHC.Types.Basic qualified as GHC
 import GHC.Types.Name.Occurrence qualified as GHC
 import GHC.Types.Name.Reader qualified as GHC
 import GHC.Types.SourceText
 import GHC.Types.SrcLoc qualified as GHC
+import Language.Haskell.GhclibParserEx.GHC.Hs.ExtendInstances
 import Language.Haskell.Syntax.Expr
 import Language.Haskell.Syntax.Lit
 import Test.Mendel.Config (
@@ -83,7 +85,7 @@ spread (a, lst) = map (a,) lst
 
 -- | The `choose` function generates subsets of a given size
 choose :: [a] -> Int -> [[a]]
-choose xs n = filter (\x -> length x == n) $ subsequences xs
+choose xs n = filter (\x -> astEq (length x) n) $ subsequences xs
 
 {- | Produce all mutants after applying all operators
 programMutants ::
@@ -277,8 +279,14 @@ selectFnMatches m = concat [x ==>* convert x | x <- WrpDecl <$> listify isFunct 
     isFunct :: LHsDecl GhcPs -> Bool
     isFunct (GHC.L _ (ValD _ (FunBind{}))) = True
     isFunct _ = False
-    convert = undefined -- (WrpDecl (GHC.L l (ValD x (FunBind ext id mg)))) = map (WrpDecl (GHC.L l (ValD x (FunBind ext id mg)))) $ filter (not . astEq mg) (permutations mg ++ removeOneElem mg)
-    -- convert _ = []
+    convert (WrpDecl (GHC.L l1 (ValD x (FunBind ext i (MG exts (GHC.L l2 alts)))))) =
+        map (changeMG (WrpDecl (GHC.L l1 (ValD x (FunBind ext i (MG exts (GHC.L l2 alts))))))) $
+            filter (not . astEq alts) (permutations alts ++ removeOneElem alts)
+    convert _ = []
+
+    changeMG :: Decl_ -> [LMatch GhcPs (LHsExpr GhcPs)] -> Decl_
+    changeMG (WrpDecl (GHC.L l1 (ValD x (FunBind ext i (MG exts (GHC.L l2 _)))))) xs = WrpDecl (GHC.L l1 (ValD x (FunBind ext i (MG exts (GHC.L l2 xs)))))
+    changeMG _ _ = error "Wrong declaration"
 
 {- | Generate all operators for permuting symbols like binary operators
 Since we are looking for symbols, we are reasonably sure that it is not
@@ -301,8 +309,8 @@ selectIdentFnOps m s = concat [x ==>* convert x | x <- WrpExpr <$> listify isCom
     isCommonFn :: LHsExpr GhcPs -> Bool
     isCommonFn (GHC.L _ (HsVar _ (GHC.L _ (GHC.Unqual n)))) | GHC.occNameString n `elem` s = True
     isCommonFn _ = False
-    convert = undefined --(HsVar _ (GHC.L l (GHC.Unqual n))) = map  (HsVar lv_ . UnQual lu_ . Ident li_) $ filter (/= GHC.occNameString n) s
---    convert _ = []
+    convert = undefined -- (HsVar _ (GHC.L l (GHC.Unqual n))) = map  (HsVar lv_ . UnQual lu_ . Ident li_) $ filter (/= GHC.occNameString n) s
+    --    convert _ = []
 
 {- | Generate all operators depending on whether it is a symbol or not.
 selectFunctionOps :: [FnOp] -> Module_ -> [MuOp]
@@ -320,7 +328,7 @@ selectFunctionOps fo f = concatMap (selectIdentFnOps f) idents ++ concatMap (sel
 {- | Generate sub-arrays with one less element except when we have only
 a single element.
 -}
-removeOneElem :: (Eq t) => [t] -> [[t]]
+removeOneElem :: (Data t) => [t] -> [[t]]
 removeOneElem [_] = []
 removeOneElem l = choose l (length l - 1)
 
