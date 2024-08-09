@@ -20,17 +20,14 @@ module Test.Mendel.Mutation (
 
 import Control.Monad (MonadPlus, mplus)
 import Data.ByteString qualified as BS
-import Data.Generics (Data, GenericM, Typeable, gmapMo, listify, mkMp)
+import Data.Generics (Data, GenericM, gmapMo, listify)
 import Data.Generics.Aliases (mkT)
 import Data.Generics.Schemes (everywhere)
 import Data.List (deleteBy, nub, nubBy, permutations, subsequences)
 import Data.Maybe (isJust)
 import Data.Ratio
 import Data.Typeable
-import GHC.Core (Unfolding (BootUnfolding))
-import GHC.Core.Utils (getIdFromTrivialExpr_maybe)
 import GHC.Data.FastString qualified as GHC
-import GHC.Driver.Backpack.Syntax (HsUnitDecl (DeclD))
 import GHC.Hs
 import GHC.Types.Basic qualified as GHC
 import GHC.Types.Name.Occurrence qualified as GHC
@@ -38,8 +35,6 @@ import GHC.Types.Name.Reader qualified as GHC
 import GHC.Types.SourceText
 import GHC.Types.SrcLoc qualified as GHC
 import Language.Haskell.GhclibParserEx.GHC.Hs.ExtendInstances
-import Language.Haskell.Syntax.Expr
-import Language.Haskell.Syntax.Lit
 import Test.Mendel.Config (
     Config (muOp),
     FnOp (_fns),
@@ -49,7 +44,6 @@ import Test.Mendel.MutationOperator (
     Exp_ (..),
     Module_,
     MuOp,
-    Mutable,
     getSpan,
     mkMpMuOp,
     same,
@@ -174,7 +168,7 @@ selectLitOps m = concat [x ==>* convert x | x <- WrpExpr <$> listify isLit m]
     isLit _ = False
     convert (WrpExpr (GHC.L l (HsLit p (HsInt x i)))) =
         map (changeIntegral (WrpExpr (GHC.L l (HsLit p (HsInt x i))))) $
-            nub [calcIntLit (+) i 1, calcIntLit (-) i 1, mkIntegralLit 0, mkIntegralLit 1]
+            nub [calcIntLit (+) i 1, calcIntLit (-) i 1, mkIntegralLit (0 :: Integer), mkIntegralLit (1 :: Integer)]
     convert (WrpExpr (GHC.L l (HsLit p (HsIntPrim x i)))) = map (changeInt (WrpExpr (GHC.L l (HsLit p (HsIntPrim x i))))) $ nub [i + 1, i - 1, 0, 1]
     convert (WrpExpr (GHC.L l (HsLit p (HsChar x c)))) = map (changeChar (WrpExpr (GHC.L l (HsLit p (HsChar x c))))) [pred c, succ c]
     convert (WrpExpr (GHC.L l (HsLit p (HsCharPrim x c)))) = map (changeChar (WrpExpr (GHC.L l (HsLit p (HsCharPrim x c))))) [pred c, succ c]
@@ -377,3 +371,4 @@ mutate' ReverseString = everywhere greverseStringLiteral
 mutate' ReverseClausesInPatternMatch = everywhere greverseClauses
 mutate' SwapPlusMinus = everywhere gswapPlusMinusOperator
 mutate' SwapIfElse = everywhere gswapIfElse
+mutate' _ = error "no original Mendel mutation"
