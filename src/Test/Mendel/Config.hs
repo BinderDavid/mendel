@@ -5,18 +5,8 @@ module Test.Mendel.Config where
 
 import Test.Mendel.MutationVariant
 
-{- | For function mutations, whether the function is a symbol or an identifier
-for example,`head` is an identifier while `==` is a symbol.
--}
-data FnType = FnSymbol | FnIdent
-    deriving (Eq, Show)
-
-{- | User defined function groups. Indicate whether the functions are symbols
-or identifiers, and also the group of functions to interchange for.
-We dont allow mixing of identifiers and functions for now (harder to
-match)
--}
-data FnOp = FnOp {_type :: FnType, _fns :: [String]}
+-- | User defined function groups to interchange for.
+newtype FnOp = FnOp {_fns :: [String]}
     deriving (Eq, Show)
 
 -- | predicates ["pred", "id", "succ"]
@@ -96,10 +86,10 @@ defaultConfig :: Config
 defaultConfig =
     Config
         { muOp =
-            [ FnOp{_type = FnIdent, _fns = predNums}
-            , FnOp{_type = FnIdent, _fns = arithLists}
-            , FnOp{_type = FnSymbol, _fns = comparators}
-            , FnOp{_type = FnSymbol, _fns = binAriths}
+            [ FnOp{_fns = predNums}
+            , FnOp{_fns = arithLists}
+            , FnOp{_fns = comparators}
+            , FnOp{_fns = binAriths}
             ]
         , doMutatePatternMatches = 1.0
         , doMutateValues = 1.0

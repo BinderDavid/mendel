@@ -42,8 +42,7 @@ import Language.Haskell.Syntax.Expr
 import Language.Haskell.Syntax.Lit
 import Test.Mendel.Config (
     Config (muOp),
-    FnOp (_fns, _type),
-    FnType (FnIdent, FnSymbol),
+    FnOp (_fns),
  )
 import Test.Mendel.MutationOperator (
     Decl_ (..),
@@ -293,28 +292,16 @@ selectFnMatches m = concat [x ==>* convert x | x <- WrpDecl <$> listify isFunct 
     changeMG (WrpDecl (GHC.L l1 (ValD x (FunBind ext i (MG exts (GHC.L l2 _)))))) xs = WrpDecl (GHC.L l1 (ValD x (FunBind ext i (MG exts (GHC.L l2 xs)))))
     changeMG _ _ = error "Wrong declaration"
 
-{- | Generate all operators for permuting symbols like binary operators
-Since we are looking for symbols, we are reasonably sure that it is not
-locally bound to a variable.
--}
-selectSymbolFnOps :: Module_ -> [String] -> [MuOp]
-selectSymbolFnOps m s = undefined -- selectValOps isBin convert m
---   where isBin :: Name_ -> Bool
---         isBin (Symbol _l n) | n `elem` s = True
---         isBin _ = False
---         convert (Symbol l n) = map (Symbol l) $ filter (/= n) s
---         convert _ = []
-
-{- | Generate all operators for permuting commonly used functions (with
-identifiers).
--}
-selectIdentFnOps :: Module_ -> [String] -> [MuOp]
-selectIdentFnOps m xs = concat [x ==>* convert x | x <- WrpExpr <$> listify isCommonFn m]
+-- | Generate all operators for permuting commonly used functions
+selectFnOps :: Module_ -> [String] -> [MuOp]
+selectFnOps m xs = concat [x ==>* convert x | x <- WrpExpr <$> listify isCommonFn m]
   where
     isCommonFn :: LHsExpr GhcPs -> Bool
     isCommonFn (GHC.L _ (HsVar _ (GHC.L _ (GHC.Unqual n)))) | GHC.occNameString n `elem` xs = True
     isCommonFn _ = False
-    convert (WrpExpr (GHC.L l1 (HsVar x (GHC.L l2 (GHC.Unqual n))))) = map (changeFn (WrpExpr (GHC.L l1 (HsVar x (GHC.L l2 (GHC.Unqual n)))))) $ filter (/= GHC.occNameString n) xs
+    convert (WrpExpr (GHC.L l1 (HsVar x (GHC.L l2 (GHC.Unqual n))))) =
+        map (changeFn (WrpExpr (GHC.L l1 (HsVar x (GHC.L l2 (GHC.Unqual n)))))) $
+            filter (/= GHC.occNameString n) xs
     convert _ = []
     changeFn :: Exp_ -> String -> Exp_
     changeFn (WrpExpr (GHC.L l1 (HsVar x (GHC.L l2 (GHC.Unqual _))))) s = WrpExpr (GHC.L l1 (HsVar x (GHC.L l2 (GHC.Unqual (GHC.mkVarOcc s)))))
@@ -322,16 +309,7 @@ selectIdentFnOps m xs = concat [x ==>* convert x | x <- WrpExpr <$> listify isCo
 
 -- | Generate all operators depending on whether it is a symbol or not.
 selectFunctionOps :: [FnOp] -> Module_ -> [MuOp]
-selectFunctionOps fo f = concatMap (selectIdentFnOps f) idents ++ concatMap (selectSymbolFnOps f) syms
-  where
-    idents = map _fns $ filter (\a -> _type a == FnIdent) fo
-    syms = map _fns $ filter (\a -> _type a == FnSymbol) fo
-
--- (Var l (UnQual l (Ident l "ab")))
--- (App l (Var l (UnQual l (Ident l "head"))) (Var l (UnQual l (Ident l "b"))))
--- (App l (App l (Var l (UnQual l (Ident l "head"))) (Var l (UnQual l (Ident l "a")))) (Var l (UnQual l (Ident l "b")))))
--- (InfixApp l (Var l (UnQual l (Ident l "a"))) (QVarOp l (UnQual l (Symbol l ">"))) (Var l (UnQual l (Ident l "b"))))
--- (InfixApp l (Var l (UnQual l (Ident l "a"))) (QVarOp l (UnQual l (Ident l "x"))) (Var l (UnQual l (Ident l "b"))))
+selectFunctionOps fo f = concatMap (selectFnOps f . _fns) fo
 
 {- | Generate sub-arrays with one less element except when we have only
 a single element.
