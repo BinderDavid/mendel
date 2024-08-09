@@ -88,29 +88,12 @@ programMutants ::
     Module_ ->
     -- | Returns mutated modules
     [(MuVariant, Span, Module_)]
-programMutants config ast = nubBy eqModules $ mutatesN (applicableOps config ast) ast fstOrder
+programMutants config ast =
+    nubBy eqModules $
+        concat [mutate op (MutateOther [], (0, 0, 0, 0), ast) | op <- applicableOps config ast]
   where
-    fstOrder = 1 -- first order
     eqModules :: (MuVariant, Span, Module_) -> (MuVariant, Span, Module_) -> Bool
     eqModules (x1, y1, z1) (x2, y2, z2) = x1 == x2 && y1 == y2 && astEq z1 z2
-
-{- | First and higher order mutation. The actual apply of mutation operators,
-and generation of mutants happens here.
-The third argument specifies whether it's first order or higher order
--}
-mutatesN ::
-    -- | Applicable Operators
-    [(MuVariant, MuOp)] ->
-    -- | Module to mutate
-    Module_ ->
-    -- | Order of mutation (usually 1 - first order)
-    Int ->
-    -- | Returns the mutated module
-    [(MuVariant, Span, Module_)]
-mutatesN os ast = mutatesN' os (MutateOther [], (0, 0, 0, 0), ast)
-  where
-    mutatesN' ops ms 1 = concat [mutate op ms | op <- ops]
-    mutatesN' ops ms c = concat [mutatesN' ops m 1 | m <- mutatesN' ops ms $ pred c]
 
 {- | Given a function, generate all mutants after applying applying
 op once (op might be applied at different places).
@@ -168,7 +151,8 @@ selectLitOps m = concat [x ==>* convert x | x <- WrpExpr <$> listify isLit m]
     isLit _ = False
     convert (WrpExpr (GHC.L l (HsLit p (HsInt x i)))) =
         map (changeIntegral (WrpExpr (GHC.L l (HsLit p (HsInt x i))))) $
-            nub [calcIntLit (+) i 1, calcIntLit (-) i 1, mkIntegralLit (0 :: Integer), mkIntegralLit (1 :: Integer)]
+            nub
+                [calcIntLit (+) i 1, calcIntLit (-) i 1, mkIntegralLit (0 :: Integer), mkIntegralLit (1 :: Integer)]
     convert (WrpExpr (GHC.L l (HsLit p (HsIntPrim x i)))) = map (changeInt (WrpExpr (GHC.L l (HsLit p (HsIntPrim x i))))) $ nub [i + 1, i - 1, 0, 1]
     convert (WrpExpr (GHC.L l (HsLit p (HsChar x c)))) = map (changeChar (WrpExpr (GHC.L l (HsLit p (HsChar x c))))) [pred c, succ c]
     convert (WrpExpr (GHC.L l (HsLit p (HsCharPrim x c)))) = map (changeChar (WrpExpr (GHC.L l (HsLit p (HsCharPrim x c))))) [pred c, succ c]
