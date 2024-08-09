@@ -309,13 +309,16 @@ selectSymbolFnOps m s = undefined -- selectValOps isBin convert m
 identifiers).
 -}
 selectIdentFnOps :: Module_ -> [String] -> [MuOp]
-selectIdentFnOps m s = concat [x ==>* convert x | x <- WrpExpr <$> listify isCommonFn m]
+selectIdentFnOps m xs = concat [x ==>* convert x | x <- WrpExpr <$> listify isCommonFn m]
   where
     isCommonFn :: LHsExpr GhcPs -> Bool
-    isCommonFn (GHC.L _ (HsVar _ (GHC.L _ (GHC.Unqual n)))) | GHC.occNameString n `elem` s = True
+    isCommonFn (GHC.L _ (HsVar _ (GHC.L _ (GHC.Unqual n)))) | GHC.occNameString n `elem` xs = True
     isCommonFn _ = False
-    convert = undefined -- (HsVar _ (GHC.L l (GHC.Unqual n))) = map  (HsVar lv_ . UnQual lu_ . Ident li_) $ filter (/= GHC.occNameString n) s
-    --    convert _ = []
+    convert (WrpExpr (GHC.L l1 (HsVar x (GHC.L l2 (GHC.Unqual n))))) = map (changeFn (WrpExpr (GHC.L l1 (HsVar x (GHC.L l2 (GHC.Unqual n)))))) $ filter (/= GHC.occNameString n) xs
+    convert _ = []
+    changeFn :: Exp_ -> String -> Exp_
+    changeFn (WrpExpr (GHC.L l1 (HsVar x (GHC.L l2 (GHC.Unqual _))))) s = WrpExpr (GHC.L l1 (HsVar x (GHC.L l2 (GHC.Unqual (GHC.mkVarOcc s)))))
+    changeFn _ _ = error "no function"
 
 -- | Generate all operators depending on whether it is a symbol or not.
 selectFunctionOps :: [FnOp] -> Module_ -> [MuOp]
