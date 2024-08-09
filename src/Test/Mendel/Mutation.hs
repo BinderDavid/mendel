@@ -8,12 +8,11 @@ Description    : Apply mutation operators to Haskell modules
 This module provides the functionality to traverse Haskell modules and apply mutation operators.
 -}
 module Test.Mendel.Mutation (
-    -- programMutants,
+    programMutants,
     selectLitOps,
-    -- selectBLitOps,
+    selectBLitOps,
     selectIfElseBoolNegOps,
-    -- selectGuardedBoolNegOps,
-    -- selectFnMatches,
+    selectFnMatches,
     mutate',
 ) where
 
@@ -24,10 +23,11 @@ import Data.ByteString qualified as BS
 import Data.Generics (Data, GenericM, Typeable, gmapMo, listify, mkMp)
 import Data.Generics.Aliases (mkT)
 import Data.Generics.Schemes (everywhere)
-import Data.List (nub, permutations, subsequences, (\\))
+import Data.List (deleteBy, nub, nubBy, permutations, subsequences)
 import Data.Maybe (isJust)
 import Data.Ratio
 import Data.Typeable
+import GHC.Core (Unfolding (BootUnfolding))
 import GHC.Core.Utils (getIdFromTrivialExpr_maybe)
 import GHC.Data.FastString qualified as GHC
 import GHC.Driver.Backpack.Syntax (HsUnitDecl (DeclD))
@@ -71,7 +71,7 @@ removes spurious transformations like "Int 1 ~~> Int 1". Secondly, it
 tries to apply the transformation to the given program on some element
 if it does not succeed, then we discard that transformation.
 -}
-relevantOps :: (Data a, Eq a) => a -> [(MuVariant, MuOp)] -> [(MuVariant, MuOp)]
+relevantOps :: (Data a) => a -> [(MuVariant, MuOp)] -> [(MuVariant, MuOp)]
 relevantOps m oplst = filter (relevantOp m) $ filter (not . same . snd) oplst
   where
     -- check if an operator can be applied to a program
@@ -87,14 +87,19 @@ spread (a, lst) = map (a,) lst
 choose :: [a] -> Int -> [[a]]
 choose xs n = filter (\x -> astEq (length x) n) $ subsequences xs
 
-{- | Produce all mutants after applying all operators
+-- | Produce all mutants after applying all operators
 programMutants ::
-     Config                   -- ^ Configuration
-  -> Module_                  -- ^ Module to mutate
-  -> [(MuVariant, Span, Module_)] -- ^ Returns mutated modules
-programMutants config ast =  nub $ mutatesN (applicableOps config ast) ast fstOrder
-  where fstOrder = 1 -- first order
--}
+    -- | Configuration
+    Config ->
+    -- | Module to mutate
+    Module_ ->
+    -- | Returns mutated modules
+    [(MuVariant, Span, Module_)]
+programMutants config ast = nubBy eqModules $ mutatesN (applicableOps config ast) ast fstOrder
+  where
+    fstOrder = 1 -- first order
+    eqModules :: (MuVariant, Span, Module_) -> (MuVariant, Span, Module_) -> Bool
+    eqModules (x1, y1, z1) (x2, y2, z2) = x1 == x2 && y1 == y2 && astEq z1 z2
 
 {- | First and higher order mutation. The actual apply of mutation operators,
 and generation of mutants happens here.
@@ -120,7 +125,7 @@ E.g.: if the operator is (op = "<" ==> ">") and there are two instances of
 "<" in the AST, then it will return two AST with each replaced.
 -}
 mutate :: (MuVariant, MuOp) -> (MuVariant, Span, Module_) -> [(MuVariant, Span, Module_)]
-mutate (v, op) (_v, _s, m) = undefined -- map (v,getSpan op,) $ once (mkMpMuOp op) m \\ [m]
+mutate (v, op) (_v, _s, m) = map (v,getSpan op,) $ deleteBy astEq m (once (mkMpMuOp op) m)
 
 -- | Returns all mutation operators
 applicableOps ::
@@ -130,15 +135,15 @@ applicableOps ::
     Module_ ->
     -- | Returns mutation operators
     [(MuVariant, MuOp)]
-applicableOps config ast = undefined -- relevantOps ast opsList
+applicableOps config ast = relevantOps ast opsList
   where
     opsList =
         concatMap
             spread
             [ (MutatePatternMatch, selectFnMatches ast)
             , (MutateValues, selectLiteralOps ast)
-            , -- (MutateFunctions, selectFunctionOps (muOp config) ast),
-              (MutateNegateIfElse, selectIfElseBoolNegOps ast)
+            , (MutateFunctions, selectFunctionOps (muOp config) ast)
+            , (MutateNegateIfElse, selectIfElseBoolNegOps ast)
             ]
 
 -- (MutateNegateGuards, selectGuardedBoolNegOps ast)
@@ -312,12 +317,12 @@ selectIdentFnOps m s = concat [x ==>* convert x | x <- WrpExpr <$> listify isCom
     convert = undefined -- (HsVar _ (GHC.L l (GHC.Unqual n))) = map  (HsVar lv_ . UnQual lu_ . Ident li_) $ filter (/= GHC.occNameString n) s
     --    convert _ = []
 
-{- | Generate all operators depending on whether it is a symbol or not.
+-- | Generate all operators depending on whether it is a symbol or not.
 selectFunctionOps :: [FnOp] -> Module_ -> [MuOp]
 selectFunctionOps fo f = concatMap (selectIdentFnOps f) idents ++ concatMap (selectSymbolFnOps f) syms
-  where idents = map _fns $ filter (\a -> _type a == FnIdent) fo
-        syms = map _fns $ filter (\a -> _type a == FnSymbol) fo
--}
+  where
+    idents = map _fns $ filter (\a -> _type a == FnIdent) fo
+    syms = map _fns $ filter (\a -> _type a == FnSymbol) fo
 
 -- (Var l (UnQual l (Ident l "ab")))
 -- (App l (Var l (UnQual l (Ident l "head"))) (Var l (UnQual l (Ident l "b"))))
