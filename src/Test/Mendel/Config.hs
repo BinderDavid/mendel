@@ -108,7 +108,7 @@ getSample MutateValues c = doMutateValues c
 getSample MutateFunctions c = doMutateFunctions c
 getSample MutateNegateIfElse c = doNegateIfElse c
 getSample MutateNegateGuards c = doNegateGuards c
-getSample MutateOther{} _c = 1
+getSample _ _c = 1
 
 {- | similarity between two mutation variants. For ease of use, MutateOther is
 treated differently. For MutateOther, if the string is empty, then it is
